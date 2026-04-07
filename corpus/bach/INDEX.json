@@ -1,0 +1,5673 @@
+[
+  {
+    "basename": "bwv1.6",
+    "source": "bwv1.6.xml",
+    "xmlBytes": 162319,
+    "hideBytes": 2505,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 93,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv10.7",
+    "source": "bwv10.7.xml",
+    "xmlBytes": 79395,
+    "hideBytes": 1289,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv101.7",
+    "source": "bwv101.7.xml",
+    "xmlBytes": 75230,
+    "hideBytes": 1160,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv102.7",
+    "source": "bwv102.7.xml",
+    "xmlBytes": 83084,
+    "hideBytes": 1246,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv103.6",
+    "source": "bwv103.6.xml",
+    "xmlBytes": 97626,
+    "hideBytes": 1313,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv104.6",
+    "source": "bwv104.6.xml",
+    "xmlBytes": 73848,
+    "hideBytes": 1065,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv108.6",
+    "source": "bwv108.6.xml",
+    "xmlBytes": 103471,
+    "hideBytes": 1513,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv11.6",
+    "source": "bwv11.6.xml",
+    "xmlBytes": 99180,
+    "hideBytes": 1519,
+    "diagnostics": 31,
+    "diagnosticKinds": {
+      "nonStandardDuration": 31
+    },
+    "warnings": 31,
+    "matrixIssues": 59,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv110.7",
+    "source": "bwv110.7.xml",
+    "xmlBytes": 75305,
+    "hideBytes": 1100,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 11,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv111.6",
+    "source": "bwv111.6.xml",
+    "xmlBytes": 101012,
+    "hideBytes": 1831,
+    "diagnostics": 29,
+    "diagnosticKinds": {
+      "nonStandardDuration": 29
+    },
+    "warnings": 29,
+    "matrixIssues": 100,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv112.5-sc",
+    "source": "bwv112.5-sc.xml",
+    "xmlBytes": 135352,
+    "hideBytes": 1898,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 50,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv112.5",
+    "source": "bwv112.5.xml",
+    "xmlBytes": 85415,
+    "hideBytes": 1500,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 49,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv113.8",
+    "source": "bwv113.8.xml",
+    "xmlBytes": 86052,
+    "hideBytes": 1154,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 35,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv114.7",
+    "source": "bwv114.7.xml",
+    "xmlBytes": 77751,
+    "hideBytes": 1114,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv115.6",
+    "source": "bwv115.6.xml",
+    "xmlBytes": 63726,
+    "hideBytes": 925,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv116.6",
+    "source": "bwv116.6.xml",
+    "xmlBytes": 73494,
+    "hideBytes": 1153,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv117.4",
+    "source": "bwv117.4.xml",
+    "xmlBytes": 75528,
+    "hideBytes": 1095,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv119.9",
+    "source": "bwv119.9.xml",
+    "xmlBytes": 65433,
+    "hideBytes": 1169,
+    "diagnostics": 22,
+    "diagnosticKinds": {
+      "nonStandardDuration": 22
+    },
+    "warnings": 22,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv12.7",
+    "source": "bwv12.7.xml",
+    "xmlBytes": 91679,
+    "hideBytes": 1616,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 124,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv120.6",
+    "source": "bwv120.6.xml",
+    "xmlBytes": 95254,
+    "hideBytes": 1518,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv120.8-a",
+    "source": "bwv120.8-a.xml",
+    "xmlBytes": 185923,
+    "hideBytes": 3221,
+    "diagnostics": 102,
+    "diagnosticKinds": {
+      "nonStandardDuration": 102
+    },
+    "warnings": 102,
+    "matrixIssues": 308,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv121.6",
+    "source": "bwv121.6.xml",
+    "xmlBytes": 98099,
+    "hideBytes": 1492,
+    "diagnostics": 19,
+    "diagnosticKinds": {
+      "nonStandardDuration": 19
+    },
+    "warnings": 19,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv122.6",
+    "source": "bwv122.6.xml",
+    "xmlBytes": 59369,
+    "hideBytes": 963,
+    "diagnostics": 20,
+    "diagnosticKinds": {
+      "nonStandardDuration": 20
+    },
+    "warnings": 20,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv123.6",
+    "source": "bwv123.6.xml",
+    "xmlBytes": 70105,
+    "hideBytes": 1056,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv124.6",
+    "source": "bwv124.6.xml",
+    "xmlBytes": 100243,
+    "hideBytes": 1661,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 105,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv125.6",
+    "source": "bwv125.6.xml",
+    "xmlBytes": 64358,
+    "hideBytes": 1155,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv126.6",
+    "source": "bwv126.6.xml",
+    "xmlBytes": 163816,
+    "hideBytes": 2504,
+    "diagnostics": 17,
+    "diagnosticKinds": {
+      "nonStandardDuration": 17
+    },
+    "warnings": 17,
+    "matrixIssues": 49,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv127.5",
+    "source": "bwv127.5.xml",
+    "xmlBytes": 86168,
+    "hideBytes": 1298,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv128.5",
+    "source": "bwv128.5.xml",
+    "xmlBytes": 113158,
+    "hideBytes": 2030,
+    "diagnostics": 37,
+    "diagnosticKinds": {
+      "nonStandardDuration": 37
+    },
+    "warnings": 37,
+    "matrixIssues": 98,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv13.6",
+    "source": "bwv13.6.xml",
+    "xmlBytes": 75048,
+    "hideBytes": 1136,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv130.6",
+    "source": "bwv130.6.xml",
+    "xmlBytes": 111249,
+    "hideBytes": 1926,
+    "diagnostics": 22,
+    "diagnosticKinds": {
+      "nonStandardDuration": 22
+    },
+    "warnings": 22,
+    "matrixIssues": 86,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv133.6",
+    "source": "bwv133.6.xml",
+    "xmlBytes": 69711,
+    "hideBytes": 1043,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 37,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv135.6",
+    "source": "bwv135.6.xml",
+    "xmlBytes": 80940,
+    "hideBytes": 1463,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 51,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv136.6",
+    "source": "bwv136.6.xml",
+    "xmlBytes": 100430,
+    "hideBytes": 1461,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv137.5",
+    "source": "bwv137.5.xml",
+    "xmlBytes": 118579,
+    "hideBytes": 2302,
+    "diagnostics": 53,
+    "diagnosticKinds": {
+      "nonStandardDuration": 53
+    },
+    "warnings": 53,
+    "matrixIssues": 186,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv139.6",
+    "source": "bwv139.6.xml",
+    "xmlBytes": 76891,
+    "hideBytes": 1182,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 13,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv14.5",
+    "source": "bwv14.5.xml",
+    "xmlBytes": 81411,
+    "hideBytes": 1164,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv140.7",
+    "source": "bwv140.7.xml",
+    "xmlBytes": 105609,
+    "hideBytes": 1528,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv144.3",
+    "source": "bwv144.3.xml",
+    "xmlBytes": 70400,
+    "hideBytes": 1039,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv144.6",
+    "source": "bwv144.6.xml",
+    "xmlBytes": 95115,
+    "hideBytes": 1417,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 38,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv145-a",
+    "source": "bwv145-a.xml",
+    "xmlBytes": 64389,
+    "hideBytes": 1134,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv145.5",
+    "source": "bwv145.5.xml",
+    "xmlBytes": 70104,
+    "hideBytes": 1118,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv146.8",
+    "source": "bwv146.8.xml",
+    "xmlBytes": 80797,
+    "hideBytes": 1462,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 97,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv148.6",
+    "source": "bwv148.6.xml",
+    "xmlBytes": 78006,
+    "hideBytes": 1165,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv149.7",
+    "source": "bwv149.7.xml",
+    "xmlBytes": 199685,
+    "hideBytes": 3460,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 167,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv151.5",
+    "source": "bwv151.5.xml",
+    "xmlBytes": 62076,
+    "hideBytes": 945,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv153.1",
+    "source": "bwv153.1.xml",
+    "xmlBytes": 73344,
+    "hideBytes": 1073,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv153.5",
+    "source": "bwv153.5.xml",
+    "xmlBytes": 69831,
+    "hideBytes": 1065,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv153.9",
+    "source": "bwv153.9.xml",
+    "xmlBytes": 53707,
+    "hideBytes": 902,
+    "diagnostics": 17,
+    "diagnosticKinds": {
+      "nonStandardDuration": 17
+    },
+    "warnings": 17,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv154.3",
+    "source": "bwv154.3.xml",
+    "xmlBytes": 76236,
+    "hideBytes": 1094,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv154.8",
+    "source": "bwv154.8.xml",
+    "xmlBytes": 86247,
+    "hideBytes": 1261,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv155.5",
+    "source": "bwv155.5.xml",
+    "xmlBytes": 78227,
+    "hideBytes": 1129,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv156.6",
+    "source": "bwv156.6.xml",
+    "xmlBytes": 73826,
+    "hideBytes": 1110,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv157.5",
+    "source": "bwv157.5.xml",
+    "xmlBytes": 73025,
+    "hideBytes": 1268,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv158.4",
+    "source": "bwv158.4.xml",
+    "xmlBytes": 80840,
+    "hideBytes": 1475,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv159.5",
+    "source": "bwv159.5.xml",
+    "xmlBytes": 100151,
+    "hideBytes": 1450,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv16.6",
+    "source": "bwv16.6.xml",
+    "xmlBytes": 73309,
+    "hideBytes": 1109,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 36,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv161.6",
+    "source": "bwv161.6.xml",
+    "xmlBytes": 135247,
+    "hideBytes": 1887,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv162.6-lpz",
+    "source": "bwv162.6-lpz.xml",
+    "xmlBytes": 85823,
+    "hideBytes": 1514,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 68,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv164.6",
+    "source": "bwv164.6.xml",
+    "xmlBytes": 65795,
+    "hideBytes": 963,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv165.6",
+    "source": "bwv165.6.xml",
+    "xmlBytes": 47197,
+    "hideBytes": 836,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv166.6",
+    "source": "bwv166.6.xml",
+    "xmlBytes": 55841,
+    "hideBytes": 825,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv168.6",
+    "source": "bwv168.6.xml",
+    "xmlBytes": 79353,
+    "hideBytes": 1147,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 31,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv169.7",
+    "source": "bwv169.7.xml",
+    "xmlBytes": 90484,
+    "hideBytes": 1338,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv17.7",
+    "source": "bwv17.7.xml",
+    "xmlBytes": 132591,
+    "hideBytes": 2150,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 51,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv171.6",
+    "source": "bwv171.6.xml",
+    "xmlBytes": 307002,
+    "hideBytes": 5784,
+    "diagnostics": 99,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "nonStandardDuration": 98
+    },
+    "warnings": 99,
+    "matrixIssues": 468,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv172.6",
+    "source": "bwv172.6.xml",
+    "xmlBytes": 126181,
+    "hideBytes": 1824,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv174.5",
+    "source": "bwv174.5.xml",
+    "xmlBytes": 131965,
+    "hideBytes": 1907,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv175.7",
+    "source": "bwv175.7.xml",
+    "xmlBytes": 219482,
+    "hideBytes": 3986,
+    "diagnostics": 55,
+    "diagnosticKinds": {
+      "nonStandardDuration": 55
+    },
+    "warnings": 55,
+    "matrixIssues": 209,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv176.6",
+    "source": "bwv176.6.xml",
+    "xmlBytes": 129731,
+    "hideBytes": 1939,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv177.4",
+    "source": "bwv177.4.xml",
+    "xmlBytes": 75139,
+    "hideBytes": 1091,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv177.5",
+    "source": "bwv177.5.xml",
+    "xmlBytes": 97366,
+    "hideBytes": 1397,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv178.7",
+    "source": "bwv178.7.xml",
+    "xmlBytes": 76354,
+    "hideBytes": 1381,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 13,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv179.6",
+    "source": "bwv179.6.xml",
+    "xmlBytes": 67420,
+    "hideBytes": 984,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 23,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv18.5-lz",
+    "source": "bwv18.5-lz.xml",
+    "xmlBytes": 84739,
+    "hideBytes": 1292,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv18.5-w",
+    "source": "bwv18.5-w.xml",
+    "xmlBytes": 87933,
+    "hideBytes": 1304,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv180.7",
+    "source": "bwv180.7.xml",
+    "xmlBytes": 90512,
+    "hideBytes": 1334,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv183.5",
+    "source": "bwv183.5.xml",
+    "xmlBytes": 88287,
+    "hideBytes": 1299,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv184.5",
+    "source": "bwv184.5.xml",
+    "xmlBytes": 88803,
+    "hideBytes": 1297,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 36,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv185.6",
+    "source": "bwv185.6.xml",
+    "xmlBytes": 133311,
+    "hideBytes": 2239,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 85,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv187.7",
+    "source": "bwv187.7.xml",
+    "xmlBytes": 105514,
+    "hideBytes": 1680,
+    "diagnostics": 32,
+    "diagnosticKinds": {
+      "nonStandardDuration": 32
+    },
+    "warnings": 32,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv188.6",
+    "source": "bwv188.6.xml",
+    "xmlBytes": 69691,
+    "hideBytes": 1129,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 57,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv19.7",
+    "source": "bwv19.7.xml",
+    "xmlBytes": 158527,
+    "hideBytes": 2735,
+    "diagnostics": 73,
+    "diagnosticKinds": {
+      "nonStandardDuration": 73
+    },
+    "warnings": 73,
+    "matrixIssues": 110,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv190.7-inst",
+    "source": "bwv190.7-inst.xml",
+    "xmlBytes": 507549,
+    "hideBytes": 9230,
+    "diagnostics": 77,
+    "diagnosticKinds": {
+      "nonStandardDuration": 77
+    },
+    "warnings": 77,
+    "matrixIssues": 632,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv190.7",
+    "source": "bwv190.7.xml",
+    "xmlBytes": 126473,
+    "hideBytes": 2387,
+    "diagnostics": 34,
+    "diagnosticKinds": {
+      "nonStandardDuration": 34
+    },
+    "warnings": 34,
+    "matrixIssues": 145,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv194.12",
+    "source": "bwv194.12.xml",
+    "xmlBytes": 62397,
+    "hideBytes": 967,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv194.6",
+    "source": "bwv194.6.xml",
+    "xmlBytes": 89575,
+    "hideBytes": 1182,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv195.6",
+    "source": "bwv195.6.xml",
+    "xmlBytes": 135637,
+    "hideBytes": 2059,
+    "diagnostics": 19,
+    "diagnosticKinds": {
+      "nonStandardDuration": 19
+    },
+    "warnings": 19,
+    "matrixIssues": 66,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv197.10",
+    "source": "bwv197.10.xml",
+    "xmlBytes": 59791,
+    "hideBytes": 872,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv197.5",
+    "source": "bwv197.5.xml",
+    "xmlBytes": 99225,
+    "hideBytes": 1449,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv197.7-a",
+    "source": "bwv197.7-a.xml",
+    "xmlBytes": 78861,
+    "hideBytes": 1434,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 104,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv2.6",
+    "source": "bwv2.6.xml",
+    "xmlBytes": 71576,
+    "hideBytes": 1059,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv20.11",
+    "source": "bwv20.11.xml",
+    "xmlBytes": 69833,
+    "hideBytes": 1000,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv20.7",
+    "source": "bwv20.7.xml",
+    "xmlBytes": 82715,
+    "hideBytes": 1509,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv226.2",
+    "source": "bwv226.2.xml",
+    "xmlBytes": 155199,
+    "hideBytes": 2325,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 46,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv227.1",
+    "source": "bwv227.1.xml",
+    "xmlBytes": 92388,
+    "hideBytes": 1501,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv227.11",
+    "source": "bwv227.11.xml",
+    "xmlBytes": 70348,
+    "hideBytes": 1051,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv227.3",
+    "source": "bwv227.3.xml",
+    "xmlBytes": 125326,
+    "hideBytes": 1987,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 44,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv227.7",
+    "source": "bwv227.7.xml",
+    "xmlBytes": 104738,
+    "hideBytes": 1521,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv229.2",
+    "source": "bwv229.2.xml",
+    "xmlBytes": 124901,
+    "hideBytes": 1994,
+    "diagnostics": 26,
+    "diagnosticKinds": {
+      "nonStandardDuration": 26
+    },
+    "warnings": 26,
+    "matrixIssues": 85,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv24.6",
+    "source": "bwv24.6.xml",
+    "xmlBytes": 97365,
+    "hideBytes": 1416,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 17,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.10",
+    "source": "bwv244.10.xml",
+    "xmlBytes": 67491,
+    "hideBytes": 1155,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 37,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.15",
+    "source": "bwv244.15.xml",
+    "xmlBytes": 73928,
+    "hideBytes": 1089,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.17",
+    "source": "bwv244.17.xml",
+    "xmlBytes": 77406,
+    "hideBytes": 1367,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.25",
+    "source": "bwv244.25.xml",
+    "xmlBytes": 87132,
+    "hideBytes": 1271,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.29-a",
+    "source": "bwv244.29-a.xml",
+    "xmlBytes": 80333,
+    "hideBytes": 1338,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 78,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.3",
+    "source": "bwv244.3.xml",
+    "xmlBytes": 69608,
+    "hideBytes": 1050,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.32",
+    "source": "bwv244.32.xml",
+    "xmlBytes": 74079,
+    "hideBytes": 1104,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 15,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.37",
+    "source": "bwv244.37.xml",
+    "xmlBytes": 77830,
+    "hideBytes": 1185,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.40",
+    "source": "bwv244.40.xml",
+    "xmlBytes": 89896,
+    "hideBytes": 1563,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 96,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.44",
+    "source": "bwv244.44.xml",
+    "xmlBytes": 74395,
+    "hideBytes": 1100,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.46",
+    "source": "bwv244.46.xml",
+    "xmlBytes": 67542,
+    "hideBytes": 1022,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.54",
+    "source": "bwv244.54.xml",
+    "xmlBytes": 72601,
+    "hideBytes": 1088,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv244.62",
+    "source": "bwv244.62.xml",
+    "xmlBytes": 74402,
+    "hideBytes": 1124,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.11",
+    "source": "bwv245.11.xml",
+    "xmlBytes": 76537,
+    "hideBytes": 1144,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.14",
+    "source": "bwv245.14.xml",
+    "xmlBytes": 93255,
+    "hideBytes": 1364,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.15",
+    "source": "bwv245.15.xml",
+    "xmlBytes": 89098,
+    "hideBytes": 1375,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.17",
+    "source": "bwv245.17.xml",
+    "xmlBytes": 78027,
+    "hideBytes": 1186,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.22",
+    "source": "bwv245.22.xml",
+    "xmlBytes": 59876,
+    "hideBytes": 853,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.26",
+    "source": "bwv245.26.xml",
+    "xmlBytes": 69146,
+    "hideBytes": 1017,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.28",
+    "source": "bwv245.28.xml",
+    "xmlBytes": 84079,
+    "hideBytes": 1270,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.3",
+    "source": "bwv245.3.xml",
+    "xmlBytes": 68040,
+    "hideBytes": 1034,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.37",
+    "source": "bwv245.37.xml",
+    "xmlBytes": 94036,
+    "hideBytes": 1414,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.40",
+    "source": "bwv245.40.xml",
+    "xmlBytes": 143855,
+    "hideBytes": 2513,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 72,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv245.5",
+    "source": "bwv245.5.xml",
+    "xmlBytes": 68866,
+    "hideBytes": 1229,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 38,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.12-2",
+    "source": "bwv248.12-2.xml",
+    "xmlBytes": 94798,
+    "hideBytes": 1284,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.17",
+    "source": "bwv248.17.xml",
+    "xmlBytes": 62423,
+    "hideBytes": 1097,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 37,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.23-2",
+    "source": "bwv248.23-2.xml",
+    "xmlBytes": 204019,
+    "hideBytes": 2789,
+    "diagnostics": 270,
+    "diagnosticKinds": {
+      "nonStandardDuration": 250,
+      "multipleVoices": 20
+    },
+    "warnings": 270,
+    "matrixIssues": 185,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.23-s",
+    "source": "bwv248.23-s.xml",
+    "xmlBytes": 54890,
+    "hideBytes": 943,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.28",
+    "source": "bwv248.28.xml",
+    "xmlBytes": 67166,
+    "hideBytes": 1131,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 67,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.33-3",
+    "source": "bwv248.33-3.xml",
+    "xmlBytes": 76053,
+    "hideBytes": 1141,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.35-3",
+    "source": "bwv248.35-3.xml",
+    "xmlBytes": 87405,
+    "hideBytes": 1254,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.35-3c",
+    "source": "bwv248.35-3c.xml",
+    "xmlBytes": 96358,
+    "hideBytes": 1583,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 98,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.42-4",
+    "source": "bwv248.42-4.xml",
+    "xmlBytes": 696887,
+    "hideBytes": 11378,
+    "diagnostics": 223,
+    "diagnosticKinds": {
+      "nonStandardDuration": 223
+    },
+    "warnings": 223,
+    "matrixIssues": 556,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.42-s",
+    "source": "bwv248.42-s.xml",
+    "xmlBytes": 85947,
+    "hideBytes": 1656,
+    "diagnostics": 37,
+    "diagnosticKinds": {
+      "nonStandardDuration": 37
+    },
+    "warnings": 37,
+    "matrixIssues": 144,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.46-5",
+    "source": "bwv248.46-5.xml",
+    "xmlBytes": 86442,
+    "hideBytes": 1256,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.5",
+    "source": "bwv248.5.xml",
+    "xmlBytes": 81401,
+    "hideBytes": 1212,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.53-5",
+    "source": "bwv248.53-5.xml",
+    "xmlBytes": 62889,
+    "hideBytes": 874,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.59-6",
+    "source": "bwv248.59-6.xml",
+    "xmlBytes": 99350,
+    "hideBytes": 1428,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.64-6",
+    "source": "bwv248.64-6.xml",
+    "xmlBytes": 1400433,
+    "hideBytes": 23803,
+    "diagnostics": 22,
+    "diagnosticKinds": {
+      "nonStandardDuration": 22
+    },
+    "warnings": 22,
+    "matrixIssues": 1416,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.64-s",
+    "source": "bwv248.64-s.xml",
+    "xmlBytes": 81889,
+    "hideBytes": 1444,
+    "diagnostics": 26,
+    "diagnosticKinds": {
+      "nonStandardDuration": 26
+    },
+    "warnings": 26,
+    "matrixIssues": 109,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.9-1",
+    "source": "bwv248.9-1.xml",
+    "xmlBytes": 201076,
+    "hideBytes": 3070,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv248.9-s",
+    "source": "bwv248.9-s.xml",
+    "xmlBytes": 72470,
+    "hideBytes": 1200,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv25.6",
+    "source": "bwv25.6.xml",
+    "xmlBytes": 86032,
+    "hideBytes": 1159,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv250",
+    "source": "bwv250.xml",
+    "xmlBytes": 105804,
+    "hideBytes": 1552,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv251",
+    "source": "bwv251.xml",
+    "xmlBytes": 117365,
+    "hideBytes": 1702,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 35,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv252",
+    "source": "bwv252.xml",
+    "xmlBytes": 116518,
+    "hideBytes": 1716,
+    "diagnostics": 32,
+    "diagnosticKinds": {
+      "nonStandardDuration": 32
+    },
+    "warnings": 32,
+    "matrixIssues": 58,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv253",
+    "source": "bwv253.xml",
+    "xmlBytes": 60266,
+    "hideBytes": 920,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv254",
+    "source": "bwv254.xml",
+    "xmlBytes": 75674,
+    "hideBytes": 1154,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv255",
+    "source": "bwv255.xml",
+    "xmlBytes": 52718,
+    "hideBytes": 800,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv256",
+    "source": "bwv256.xml",
+    "xmlBytes": 76146,
+    "hideBytes": 1105,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv257",
+    "source": "bwv257.xml",
+    "xmlBytes": 75055,
+    "hideBytes": 1107,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv258",
+    "source": "bwv258.xml",
+    "xmlBytes": 72573,
+    "hideBytes": 1058,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv259",
+    "source": "bwv259.xml",
+    "xmlBytes": 82003,
+    "hideBytes": 1194,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv26.6",
+    "source": "bwv26.6.xml",
+    "xmlBytes": 65930,
+    "hideBytes": 993,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv260",
+    "source": "bwv260.xml",
+    "xmlBytes": 78775,
+    "hideBytes": 1132,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv261",
+    "source": "bwv261.xml",
+    "xmlBytes": 114341,
+    "hideBytes": 1769,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv262",
+    "source": "bwv262.xml",
+    "xmlBytes": 73002,
+    "hideBytes": 1048,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv263",
+    "source": "bwv263.xml",
+    "xmlBytes": 83993,
+    "hideBytes": 1222,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv264",
+    "source": "bwv264.xml",
+    "xmlBytes": 60658,
+    "hideBytes": 890,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 37,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv265",
+    "source": "bwv265.xml",
+    "xmlBytes": 53858,
+    "hideBytes": 824,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv266",
+    "source": "bwv266.xml",
+    "xmlBytes": 88460,
+    "hideBytes": 1422,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv267",
+    "source": "bwv267.xml",
+    "xmlBytes": 125678,
+    "hideBytes": 1733,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv268",
+    "source": "bwv268.xml",
+    "xmlBytes": 88632,
+    "hideBytes": 1284,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv269",
+    "source": "bwv269.xml",
+    "xmlBytes": 85809,
+    "hideBytes": 1375,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 50,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv27.6",
+    "source": "bwv27.6.xml",
+    "xmlBytes": 109041,
+    "hideBytes": 1734,
+    "diagnostics": 36,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "nonStandardDuration": 35
+    },
+    "warnings": 36,
+    "matrixIssues": 63,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv270",
+    "source": "bwv270.xml",
+    "xmlBytes": 77422,
+    "hideBytes": 1155,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 31,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv271",
+    "source": "bwv271.xml",
+    "xmlBytes": 77454,
+    "hideBytes": 1139,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 27,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv272",
+    "source": "bwv272.xml",
+    "xmlBytes": 75240,
+    "hideBytes": 1118,
+    "diagnostics": 18,
+    "diagnosticKinds": {
+      "nonStandardDuration": 18
+    },
+    "warnings": 18,
+    "matrixIssues": 36,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv273",
+    "source": "bwv273.xml",
+    "xmlBytes": 75573,
+    "hideBytes": 1111,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv274",
+    "source": "bwv274.xml",
+    "xmlBytes": 65293,
+    "hideBytes": 961,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv275",
+    "source": "bwv275.xml",
+    "xmlBytes": 84484,
+    "hideBytes": 1326,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv276",
+    "source": "bwv276.xml",
+    "xmlBytes": 204740,
+    "hideBytes": 3013,
+    "diagnostics": 19,
+    "diagnosticKinds": {
+      "nonStandardDuration": 19
+    },
+    "warnings": 19,
+    "matrixIssues": 54,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv277",
+    "source": "bwv277.xml",
+    "xmlBytes": 112112,
+    "hideBytes": 1731,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 43,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv278",
+    "source": "bwv278.xml",
+    "xmlBytes": 92723,
+    "hideBytes": 1358,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 35,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv279",
+    "source": "bwv279.xml",
+    "xmlBytes": 91638,
+    "hideBytes": 1475,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv28.6",
+    "source": "bwv28.6.xml",
+    "xmlBytes": 80589,
+    "hideBytes": 1110,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv280",
+    "source": "bwv280.xml",
+    "xmlBytes": 98414,
+    "hideBytes": 1464,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 17,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv281",
+    "source": "bwv281.xml",
+    "xmlBytes": 46482,
+    "hideBytes": 725,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 51,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv282",
+    "source": "bwv282.xml",
+    "xmlBytes": 64002,
+    "hideBytes": 1070,
+    "diagnostics": 26,
+    "diagnosticKinds": {
+      "nonStandardDuration": 26
+    },
+    "warnings": 26,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv283",
+    "source": "bwv283.xml",
+    "xmlBytes": 110969,
+    "hideBytes": 1661,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv284",
+    "source": "bwv284.xml",
+    "xmlBytes": 94086,
+    "hideBytes": 1436,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv285",
+    "source": "bwv285.xml",
+    "xmlBytes": 87261,
+    "hideBytes": 1287,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv286",
+    "source": "bwv286.xml",
+    "xmlBytes": 41469,
+    "hideBytes": 632,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv287",
+    "source": "bwv287.xml",
+    "xmlBytes": 75969,
+    "hideBytes": 1126,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv288",
+    "source": "bwv288.xml",
+    "xmlBytes": 89430,
+    "hideBytes": 1315,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv289",
+    "source": "bwv289.xml",
+    "xmlBytes": 79741,
+    "hideBytes": 1191,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv29.8",
+    "source": "bwv29.8.xml",
+    "xmlBytes": 228408,
+    "hideBytes": 3991,
+    "diagnostics": 88,
+    "diagnosticKinds": {
+      "nonStandardDuration": 88
+    },
+    "warnings": 88,
+    "matrixIssues": 251,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv290",
+    "source": "bwv290.xml",
+    "xmlBytes": 54992,
+    "hideBytes": 832,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv291",
+    "source": "bwv291.xml",
+    "xmlBytes": 67251,
+    "hideBytes": 1028,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv292",
+    "source": "bwv292.xml",
+    "xmlBytes": 90604,
+    "hideBytes": 1325,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv293",
+    "source": "bwv293.xml",
+    "xmlBytes": 55737,
+    "hideBytes": 840,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv294",
+    "source": "bwv294.xml",
+    "xmlBytes": 104287,
+    "hideBytes": 1543,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv295",
+    "source": "bwv295.xml",
+    "xmlBytes": 70142,
+    "hideBytes": 1112,
+    "diagnostics": 17,
+    "diagnosticKinds": {
+      "nonStandardDuration": 17
+    },
+    "warnings": 17,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv296",
+    "source": "bwv296.xml",
+    "xmlBytes": 73991,
+    "hideBytes": 1182,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv297",
+    "source": "bwv297.xml",
+    "xmlBytes": 77818,
+    "hideBytes": 1167,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv298",
+    "source": "bwv298.xml",
+    "xmlBytes": 65124,
+    "hideBytes": 972,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv299",
+    "source": "bwv299.xml",
+    "xmlBytes": 83494,
+    "hideBytes": 1235,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 54,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv3.6",
+    "source": "bwv3.6.xml",
+    "xmlBytes": 61679,
+    "hideBytes": 904,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv30.6",
+    "source": "bwv30.6.xml",
+    "xmlBytes": 87501,
+    "hideBytes": 1260,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv300",
+    "source": "bwv300.xml",
+    "xmlBytes": 86934,
+    "hideBytes": 1367,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv301",
+    "source": "bwv301.xml",
+    "xmlBytes": 83167,
+    "hideBytes": 1227,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 15,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv302",
+    "source": "bwv302.xml",
+    "xmlBytes": 86454,
+    "hideBytes": 1261,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv303",
+    "source": "bwv303.xml",
+    "xmlBytes": 87911,
+    "hideBytes": 1262,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv304",
+    "source": "bwv304.xml",
+    "xmlBytes": 132710,
+    "hideBytes": 2005,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "nonStandardDuration": 15
+    },
+    "warnings": 16,
+    "matrixIssues": 85,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv305",
+    "source": "bwv305.xml",
+    "xmlBytes": 100218,
+    "hideBytes": 1471,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv306",
+    "source": "bwv306.xml",
+    "xmlBytes": 73270,
+    "hideBytes": 1162,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv307",
+    "source": "bwv307.xml",
+    "xmlBytes": 72604,
+    "hideBytes": 1043,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv308",
+    "source": "bwv308.xml",
+    "xmlBytes": 71998,
+    "hideBytes": 1020,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv309",
+    "source": "bwv309.xml",
+    "xmlBytes": 90052,
+    "hideBytes": 1298,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv31.9",
+    "source": "bwv31.9.xml",
+    "xmlBytes": 107230,
+    "hideBytes": 1879,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 79,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv310",
+    "source": "bwv310.xml",
+    "xmlBytes": 61443,
+    "hideBytes": 918,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv311",
+    "source": "bwv311.xml",
+    "xmlBytes": 108019,
+    "hideBytes": 1612,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv312",
+    "source": "bwv312.xml",
+    "xmlBytes": 117497,
+    "hideBytes": 1755,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 51,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv313",
+    "source": "bwv313.xml",
+    "xmlBytes": 74075,
+    "hideBytes": 1068,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 31,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv314",
+    "source": "bwv314.xml",
+    "xmlBytes": 69770,
+    "hideBytes": 1030,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv315",
+    "source": "bwv315.xml",
+    "xmlBytes": 91977,
+    "hideBytes": 1354,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 35,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv316",
+    "source": "bwv316.xml",
+    "xmlBytes": 79020,
+    "hideBytes": 1122,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv317",
+    "source": "bwv317.xml",
+    "xmlBytes": 105719,
+    "hideBytes": 1501,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv318",
+    "source": "bwv318.xml",
+    "xmlBytes": 70442,
+    "hideBytes": 1087,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv319",
+    "source": "bwv319.xml",
+    "xmlBytes": 76499,
+    "hideBytes": 1143,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv32.6",
+    "source": "bwv32.6.xml",
+    "xmlBytes": 76925,
+    "hideBytes": 1130,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv320",
+    "source": "bwv320.xml",
+    "xmlBytes": 132293,
+    "hideBytes": 2208,
+    "diagnostics": 22,
+    "diagnosticKinds": {
+      "nonStandardDuration": 22
+    },
+    "warnings": 22,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv321",
+    "source": "bwv321.xml",
+    "xmlBytes": 62473,
+    "hideBytes": 961,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv322",
+    "source": "bwv322.xml",
+    "xmlBytes": 122886,
+    "hideBytes": 1844,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv323",
+    "source": "bwv323.xml",
+    "xmlBytes": 41078,
+    "hideBytes": 659,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 2,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv324",
+    "source": "bwv324.xml",
+    "xmlBytes": 39179,
+    "hideBytes": 629,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv325",
+    "source": "bwv325.xml",
+    "xmlBytes": 103807,
+    "hideBytes": 1563,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv326",
+    "source": "bwv326.xml",
+    "xmlBytes": 70274,
+    "hideBytes": 1113,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv327",
+    "source": "bwv327.xml",
+    "xmlBytes": 56824,
+    "hideBytes": 953,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv328",
+    "source": "bwv328.xml",
+    "xmlBytes": 368384,
+    "hideBytes": 5087,
+    "diagnostics": 41,
+    "diagnosticKinds": {
+      "nonStandardDuration": 41
+    },
+    "warnings": 41,
+    "matrixIssues": 132,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv329",
+    "source": "bwv329.xml",
+    "xmlBytes": 85430,
+    "hideBytes": 1230,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv33.6",
+    "source": "bwv33.6.xml",
+    "xmlBytes": 108602,
+    "hideBytes": 1645,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv330",
+    "source": "bwv330.xml",
+    "xmlBytes": 65726,
+    "hideBytes": 952,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv331",
+    "source": "bwv331.xml",
+    "xmlBytes": 56419,
+    "hideBytes": 842,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv332",
+    "source": "bwv332.xml",
+    "xmlBytes": 56267,
+    "hideBytes": 847,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv333",
+    "source": "bwv333.xml",
+    "xmlBytes": 81135,
+    "hideBytes": 1155,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv334",
+    "source": "bwv334.xml",
+    "xmlBytes": 79290,
+    "hideBytes": 1158,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv335",
+    "source": "bwv335.xml",
+    "xmlBytes": 61851,
+    "hideBytes": 875,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv336",
+    "source": "bwv336.xml",
+    "xmlBytes": 60859,
+    "hideBytes": 889,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv337",
+    "source": "bwv337.xml",
+    "xmlBytes": 73823,
+    "hideBytes": 1098,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 2,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv338",
+    "source": "bwv338.xml",
+    "xmlBytes": 78569,
+    "hideBytes": 1134,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 38,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv339",
+    "source": "bwv339.xml",
+    "xmlBytes": 89086,
+    "hideBytes": 1202,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv340",
+    "source": "bwv340.xml",
+    "xmlBytes": 139960,
+    "hideBytes": 2084,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 45,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv341",
+    "source": "bwv341.xml",
+    "xmlBytes": 57771,
+    "hideBytes": 865,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv342",
+    "source": "bwv342.xml",
+    "xmlBytes": 84032,
+    "hideBytes": 1384,
+    "diagnostics": 17,
+    "diagnosticKinds": {
+      "nonStandardDuration": 17
+    },
+    "warnings": 17,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv343",
+    "source": "bwv343.xml",
+    "xmlBytes": 92019,
+    "hideBytes": 1438,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 46,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv344",
+    "source": "bwv344.xml",
+    "xmlBytes": 91524,
+    "hideBytes": 1470,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv345",
+    "source": "bwv345.xml",
+    "xmlBytes": 79738,
+    "hideBytes": 1117,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv346",
+    "source": "bwv346.xml",
+    "xmlBytes": 92505,
+    "hideBytes": 1419,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 35,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv347",
+    "source": "bwv347.xml",
+    "xmlBytes": 85762,
+    "hideBytes": 1263,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv348",
+    "source": "bwv348.xml",
+    "xmlBytes": 97352,
+    "hideBytes": 1490,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv349",
+    "source": "bwv349.xml",
+    "xmlBytes": 61495,
+    "hideBytes": 994,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv350",
+    "source": "bwv350.xml",
+    "xmlBytes": 127013,
+    "hideBytes": 1871,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv351",
+    "source": "bwv351.xml",
+    "xmlBytes": 68395,
+    "hideBytes": 1013,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv352",
+    "source": "bwv352.xml",
+    "xmlBytes": 85115,
+    "hideBytes": 1241,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv353",
+    "source": "bwv353.xml",
+    "xmlBytes": 85945,
+    "hideBytes": 1254,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv354",
+    "source": "bwv354.xml",
+    "xmlBytes": 88464,
+    "hideBytes": 1229,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv355",
+    "source": "bwv355.xml",
+    "xmlBytes": 100874,
+    "hideBytes": 1464,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv356",
+    "source": "bwv356.xml",
+    "xmlBytes": 85404,
+    "hideBytes": 1312,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv357",
+    "source": "bwv357.xml",
+    "xmlBytes": 103104,
+    "hideBytes": 1510,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv358",
+    "source": "bwv358.xml",
+    "xmlBytes": 74996,
+    "hideBytes": 1105,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv359",
+    "source": "bwv359.xml",
+    "xmlBytes": 76784,
+    "hideBytes": 1098,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv36.4-2",
+    "source": "bwv36.4-2.xml",
+    "xmlBytes": 88806,
+    "hideBytes": 1297,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv36.8-2",
+    "source": "bwv36.8-2.xml",
+    "xmlBytes": 55387,
+    "hideBytes": 802,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv360",
+    "source": "bwv360.xml",
+    "xmlBytes": 73759,
+    "hideBytes": 1064,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv361",
+    "source": "bwv361.xml",
+    "xmlBytes": 79651,
+    "hideBytes": 1170,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv362",
+    "source": "bwv362.xml",
+    "xmlBytes": 167043,
+    "hideBytes": 2467,
+    "diagnostics": 17,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "nonStandardDuration": 16
+    },
+    "warnings": 17,
+    "matrixIssues": 86,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv363",
+    "source": "bwv363.xml",
+    "xmlBytes": 75659,
+    "hideBytes": 1138,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv364",
+    "source": "bwv364.xml",
+    "xmlBytes": 62371,
+    "hideBytes": 979,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv365",
+    "source": "bwv365.xml",
+    "xmlBytes": 55443,
+    "hideBytes": 811,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv366",
+    "source": "bwv366.xml",
+    "xmlBytes": 91681,
+    "hideBytes": 1533,
+    "diagnostics": 21,
+    "diagnosticKinds": {
+      "nonStandardDuration": 21
+    },
+    "warnings": 21,
+    "matrixIssues": 72,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv367",
+    "source": "bwv367.xml",
+    "xmlBytes": 73178,
+    "hideBytes": 1134,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv368",
+    "source": "bwv368.xml",
+    "xmlBytes": 115628,
+    "hideBytes": 1895,
+    "diagnostics": 30,
+    "diagnosticKinds": {
+      "nonStandardDuration": 30
+    },
+    "warnings": 30,
+    "matrixIssues": 46,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv369",
+    "source": "bwv369.xml",
+    "xmlBytes": 73305,
+    "hideBytes": 1091,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv37.6",
+    "source": "bwv37.6.xml",
+    "xmlBytes": 109693,
+    "hideBytes": 1651,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv370",
+    "source": "bwv370.xml",
+    "xmlBytes": 53928,
+    "hideBytes": 820,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv371",
+    "source": "bwv371.xml",
+    "xmlBytes": 280621,
+    "hideBytes": 4142,
+    "diagnostics": 19,
+    "diagnosticKinds": {
+      "nonStandardDuration": 19
+    },
+    "warnings": 19,
+    "matrixIssues": 53,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv372",
+    "source": "bwv372.xml",
+    "xmlBytes": 98062,
+    "hideBytes": 1453,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv373",
+    "source": "bwv373.xml",
+    "xmlBytes": 58811,
+    "hideBytes": 867,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv374",
+    "source": "bwv374.xml",
+    "xmlBytes": 123265,
+    "hideBytes": 1886,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 40,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv375",
+    "source": "bwv375.xml",
+    "xmlBytes": 69716,
+    "hideBytes": 1042,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 27,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv376",
+    "source": "bwv376.xml",
+    "xmlBytes": 68379,
+    "hideBytes": 1000,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv377",
+    "source": "bwv377.xml",
+    "xmlBytes": 58746,
+    "hideBytes": 852,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 17,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv378",
+    "source": "bwv378.xml",
+    "xmlBytes": 93724,
+    "hideBytes": 1461,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 41,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv379",
+    "source": "bwv379.xml",
+    "xmlBytes": 57889,
+    "hideBytes": 829,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv38.6",
+    "source": "bwv38.6.xml",
+    "xmlBytes": 67101,
+    "hideBytes": 1026,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv380",
+    "source": "bwv380.xml",
+    "xmlBytes": 93242,
+    "hideBytes": 1335,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv381",
+    "source": "bwv381.xml",
+    "xmlBytes": 97198,
+    "hideBytes": 1437,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv382",
+    "source": "bwv382.xml",
+    "xmlBytes": 84193,
+    "hideBytes": 1270,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv383",
+    "source": "bwv383.xml",
+    "xmlBytes": 167874,
+    "hideBytes": 2520,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 43,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv384",
+    "source": "bwv384.xml",
+    "xmlBytes": 52192,
+    "hideBytes": 758,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv385",
+    "source": "bwv385.xml",
+    "xmlBytes": 85241,
+    "hideBytes": 1269,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv386",
+    "source": "bwv386.xml",
+    "xmlBytes": 74642,
+    "hideBytes": 1112,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 37,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv387",
+    "source": "bwv387.xml",
+    "xmlBytes": 59862,
+    "hideBytes": 894,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv388",
+    "source": "bwv388.xml",
+    "xmlBytes": 77618,
+    "hideBytes": 1123,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 36,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv389",
+    "source": "bwv389.xml",
+    "xmlBytes": 127836,
+    "hideBytes": 1904,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv39.7",
+    "source": "bwv39.7.xml",
+    "xmlBytes": 79712,
+    "hideBytes": 1153,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 2,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv390",
+    "source": "bwv390.xml",
+    "xmlBytes": 127778,
+    "hideBytes": 2144,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 57,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv391",
+    "source": "bwv391.xml",
+    "xmlBytes": 74882,
+    "hideBytes": 1180,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv392",
+    "source": "bwv392.xml",
+    "xmlBytes": 79132,
+    "hideBytes": 1186,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv393",
+    "source": "bwv393.xml",
+    "xmlBytes": 74009,
+    "hideBytes": 1112,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv394",
+    "source": "bwv394.xml",
+    "xmlBytes": 87352,
+    "hideBytes": 1294,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv395",
+    "source": "bwv395.xml",
+    "xmlBytes": 77806,
+    "hideBytes": 1158,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv396",
+    "source": "bwv396.xml",
+    "xmlBytes": 52677,
+    "hideBytes": 800,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv397",
+    "source": "bwv397.xml",
+    "xmlBytes": 77057,
+    "hideBytes": 1128,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv398",
+    "source": "bwv398.xml",
+    "xmlBytes": 89536,
+    "hideBytes": 1434,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 104,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv399",
+    "source": "bwv399.xml",
+    "xmlBytes": 75830,
+    "hideBytes": 1120,
+    "diagnostics": 22,
+    "diagnosticKinds": {
+      "nonStandardDuration": 22
+    },
+    "warnings": 22,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv4.8",
+    "source": "bwv4.8.xml",
+    "xmlBytes": 79486,
+    "hideBytes": 1185,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv40.3",
+    "source": "bwv40.3.xml",
+    "xmlBytes": 74422,
+    "hideBytes": 1103,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv40.6",
+    "source": "bwv40.6.xml",
+    "xmlBytes": 88912,
+    "hideBytes": 1352,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv40.8",
+    "source": "bwv40.8.xml",
+    "xmlBytes": 127322,
+    "hideBytes": 1871,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv400",
+    "source": "bwv400.xml",
+    "xmlBytes": 69844,
+    "hideBytes": 1089,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv401",
+    "source": "bwv401.xml",
+    "xmlBytes": 79965,
+    "hideBytes": 1169,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv402",
+    "source": "bwv402.xml",
+    "xmlBytes": 131807,
+    "hideBytes": 1879,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 48,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv403",
+    "source": "bwv403.xml",
+    "xmlBytes": 90618,
+    "hideBytes": 1436,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv404",
+    "source": "bwv404.xml",
+    "xmlBytes": 50957,
+    "hideBytes": 773,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv405",
+    "source": "bwv405.xml",
+    "xmlBytes": 65300,
+    "hideBytes": 1004,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv406",
+    "source": "bwv406.xml",
+    "xmlBytes": 71311,
+    "hideBytes": 1076,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv407",
+    "source": "bwv407.xml",
+    "xmlBytes": 140549,
+    "hideBytes": 2105,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv408",
+    "source": "bwv408.xml",
+    "xmlBytes": 67932,
+    "hideBytes": 1038,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv409",
+    "source": "bwv409.xml",
+    "xmlBytes": 65961,
+    "hideBytes": 976,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv41.6",
+    "source": "bwv41.6.xml",
+    "xmlBytes": 296855,
+    "hideBytes": 4965,
+    "diagnostics": 30,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "nonStandardDuration": 29
+    },
+    "warnings": 30,
+    "matrixIssues": 254,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv410",
+    "source": "bwv410.xml",
+    "xmlBytes": 84270,
+    "hideBytes": 1260,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv411",
+    "source": "bwv411.xml",
+    "xmlBytes": 93647,
+    "hideBytes": 1347,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv412",
+    "source": "bwv412.xml",
+    "xmlBytes": 93210,
+    "hideBytes": 1410,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 45,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv413",
+    "source": "bwv413.xml",
+    "xmlBytes": 140509,
+    "hideBytes": 2171,
+    "diagnostics": 26,
+    "diagnosticKinds": {
+      "nonStandardDuration": 26
+    },
+    "warnings": 26,
+    "matrixIssues": 34,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv414",
+    "source": "bwv414.xml",
+    "xmlBytes": 61285,
+    "hideBytes": 917,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv415",
+    "source": "bwv415.xml",
+    "xmlBytes": 80972,
+    "hideBytes": 1180,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv416",
+    "source": "bwv416.xml",
+    "xmlBytes": 78759,
+    "hideBytes": 1202,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv417",
+    "source": "bwv417.xml",
+    "xmlBytes": 89657,
+    "hideBytes": 1285,
+    "diagnostics": 19,
+    "diagnosticKinds": {
+      "nonStandardDuration": 19
+    },
+    "warnings": 19,
+    "matrixIssues": 47,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv418",
+    "source": "bwv418.xml",
+    "xmlBytes": 97925,
+    "hideBytes": 1501,
+    "diagnostics": 20,
+    "diagnosticKinds": {
+      "nonStandardDuration": 20
+    },
+    "warnings": 20,
+    "matrixIssues": 44,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv419",
+    "source": "bwv419.xml",
+    "xmlBytes": 77861,
+    "hideBytes": 1162,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 39,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv42.7",
+    "source": "bwv42.7.xml",
+    "xmlBytes": 167304,
+    "hideBytes": 2473,
+    "diagnostics": 20,
+    "diagnosticKinds": {
+      "nonStandardDuration": 20
+    },
+    "warnings": 20,
+    "matrixIssues": 60,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv420",
+    "source": "bwv420.xml",
+    "xmlBytes": 72044,
+    "hideBytes": 1064,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv421",
+    "source": "bwv421.xml",
+    "xmlBytes": 65609,
+    "hideBytes": 983,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 15,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv422",
+    "source": "bwv422.xml",
+    "xmlBytes": 79862,
+    "hideBytes": 1191,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv423",
+    "source": "bwv423.xml",
+    "xmlBytes": 104716,
+    "hideBytes": 1534,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 31,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv424",
+    "source": "bwv424.xml",
+    "xmlBytes": 54152,
+    "hideBytes": 838,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv425",
+    "source": "bwv425.xml",
+    "xmlBytes": 186644,
+    "hideBytes": 2798,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 78,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv426",
+    "source": "bwv426.xml",
+    "xmlBytes": 98378,
+    "hideBytes": 1514,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv427",
+    "source": "bwv427.xml",
+    "xmlBytes": 79671,
+    "hideBytes": 1221,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv428",
+    "source": "bwv428.xml",
+    "xmlBytes": 96521,
+    "hideBytes": 1462,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv429",
+    "source": "bwv429.xml",
+    "xmlBytes": 105004,
+    "hideBytes": 1545,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 43,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv43.11",
+    "source": "bwv43.11.xml",
+    "xmlBytes": 76006,
+    "hideBytes": 1227,
+    "diagnostics": 30,
+    "diagnosticKinds": {
+      "nonStandardDuration": 30
+    },
+    "warnings": 30,
+    "matrixIssues": 42,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv430",
+    "source": "bwv430.xml",
+    "xmlBytes": 109236,
+    "hideBytes": 1595,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 48,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv431",
+    "source": "bwv431.xml",
+    "xmlBytes": 63428,
+    "hideBytes": 950,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 22,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv432",
+    "source": "bwv432.xml",
+    "xmlBytes": 64092,
+    "hideBytes": 942,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 29,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv433",
+    "source": "bwv433.xml",
+    "xmlBytes": 114829,
+    "hideBytes": 1754,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv434",
+    "source": "bwv434.xml",
+    "xmlBytes": 65472,
+    "hideBytes": 958,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 20,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv435",
+    "source": "bwv435.xml",
+    "xmlBytes": 78302,
+    "hideBytes": 1165,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 11,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv436",
+    "source": "bwv436.xml",
+    "xmlBytes": 84299,
+    "hideBytes": 1238,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 17,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv437",
+    "source": "bwv437.xml",
+    "xmlBytes": 214146,
+    "hideBytes": 3208,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv438",
+    "source": "bwv438.xml",
+    "xmlBytes": 59056,
+    "hideBytes": 883,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv44.7",
+    "source": "bwv44.7.xml",
+    "xmlBytes": 75702,
+    "hideBytes": 1145,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv45.7",
+    "source": "bwv45.7.xml",
+    "xmlBytes": 90298,
+    "hideBytes": 1392,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv46.6",
+    "source": "bwv46.6.xml",
+    "xmlBytes": 90500,
+    "hideBytes": 1437,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 4,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv47.5",
+    "source": "bwv47.5.xml",
+    "xmlBytes": 67755,
+    "hideBytes": 1026,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv48.3",
+    "source": "bwv48.3.xml",
+    "xmlBytes": 61109,
+    "hideBytes": 935,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 17,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv48.7",
+    "source": "bwv48.7.xml",
+    "xmlBytes": 76263,
+    "hideBytes": 1125,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv5.7",
+    "source": "bwv5.7.xml",
+    "xmlBytes": 73451,
+    "hideBytes": 1115,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv52.6",
+    "source": "bwv52.6.xml",
+    "xmlBytes": 113034,
+    "hideBytes": 1812,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 91,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv55.5",
+    "source": "bwv55.5.xml",
+    "xmlBytes": 77170,
+    "hideBytes": 1106,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv56.5",
+    "source": "bwv56.5.xml",
+    "xmlBytes": 68724,
+    "hideBytes": 1035,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 2,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv57.8",
+    "source": "bwv57.8.xml",
+    "xmlBytes": 59507,
+    "hideBytes": 906,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 6,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv59.3",
+    "source": "bwv59.3.xml",
+    "xmlBytes": 218312,
+    "hideBytes": 3975,
+    "diagnostics": 55,
+    "diagnosticKinds": {
+      "nonStandardDuration": 55
+    },
+    "warnings": 55,
+    "matrixIssues": 209,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv6.6",
+    "source": "bwv6.6.xml",
+    "xmlBytes": 59887,
+    "hideBytes": 892,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv60.5",
+    "source": "bwv60.5.xml",
+    "xmlBytes": 105726,
+    "hideBytes": 1627,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv62.6",
+    "source": "bwv62.6.xml",
+    "xmlBytes": 66264,
+    "hideBytes": 1003,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv64.2",
+    "source": "bwv64.2.xml",
+    "xmlBytes": 63679,
+    "hideBytes": 989,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 12,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv64.4",
+    "source": "bwv64.4.xml",
+    "xmlBytes": 91285,
+    "hideBytes": 1389,
+    "diagnostics": 28,
+    "diagnosticKinds": {
+      "nonStandardDuration": 28
+    },
+    "warnings": 28,
+    "matrixIssues": 46,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv64.8",
+    "source": "bwv64.8.xml",
+    "xmlBytes": 71749,
+    "hideBytes": 1057,
+    "diagnostics": 3,
+    "diagnosticKinds": {
+      "nonStandardDuration": 3
+    },
+    "warnings": 3,
+    "matrixIssues": 10,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv65.2",
+    "source": "bwv65.2.xml",
+    "xmlBytes": 56700,
+    "hideBytes": 950,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv65.7",
+    "source": "bwv65.7.xml",
+    "xmlBytes": 90524,
+    "hideBytes": 1361,
+    "diagnostics": 12,
+    "diagnosticKinds": {
+      "nonStandardDuration": 12
+    },
+    "warnings": 12,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv66.6",
+    "source": "bwv66.6.xml",
+    "xmlBytes": 51826,
+    "hideBytes": 894,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 8,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv67.4",
+    "source": "bwv67.4.xml",
+    "xmlBytes": 55687,
+    "hideBytes": 1070,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 116,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv67.7",
+    "source": "bwv67.7.xml",
+    "xmlBytes": 52070,
+    "hideBytes": 776,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv69.6-a",
+    "source": "bwv69.6-a.xml",
+    "xmlBytes": 65132,
+    "hideBytes": 963,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv69.6",
+    "source": "bwv69.6.xml",
+    "xmlBytes": 226437,
+    "hideBytes": 3654,
+    "diagnostics": 31,
+    "diagnosticKinds": {
+      "nonStandardDuration": 31
+    },
+    "warnings": 31,
+    "matrixIssues": 172,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv7.7",
+    "source": "bwv7.7.xml",
+    "xmlBytes": 102176,
+    "hideBytes": 1802,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv70.11",
+    "source": "bwv70.11.xml",
+    "xmlBytes": 139063,
+    "hideBytes": 2084,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv70.7",
+    "source": "bwv70.7.xml",
+    "xmlBytes": 94886,
+    "hideBytes": 1718,
+    "diagnostics": 36,
+    "diagnosticKinds": {
+      "nonStandardDuration": 36
+    },
+    "warnings": 36,
+    "matrixIssues": 156,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv72.6",
+    "source": "bwv72.6.xml",
+    "xmlBytes": 94252,
+    "hideBytes": 1719,
+    "diagnostics": 15,
+    "diagnosticKinds": {
+      "nonStandardDuration": 15
+    },
+    "warnings": 15,
+    "matrixIssues": 60,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv73.5",
+    "source": "bwv73.5.xml",
+    "xmlBytes": 69762,
+    "hideBytes": 1045,
+    "diagnostics": 13,
+    "diagnosticKinds": {
+      "nonStandardDuration": 13
+    },
+    "warnings": 13,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv74.8",
+    "source": "bwv74.8.xml",
+    "xmlBytes": 90048,
+    "hideBytes": 1370,
+    "diagnostics": 6,
+    "diagnosticKinds": {
+      "nonStandardDuration": 6
+    },
+    "warnings": 6,
+    "matrixIssues": 28,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv77.6",
+    "source": "bwv77.6.xml",
+    "xmlBytes": 71803,
+    "hideBytes": 1087,
+    "diagnostics": 11,
+    "diagnosticKinds": {
+      "nonStandardDuration": 11
+    },
+    "warnings": 11,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv78.7",
+    "source": "bwv78.7.xml",
+    "xmlBytes": 98578,
+    "hideBytes": 1469,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv79.3",
+    "source": "bwv79.3.xml",
+    "xmlBytes": 463268,
+    "hideBytes": 8040,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 752,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv79.6",
+    "source": "bwv79.6.xml",
+    "xmlBytes": 89046,
+    "hideBytes": 1549,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 120,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv8.6",
+    "source": "bwv8.6.xml",
+    "xmlBytes": 118434,
+    "hideBytes": 1756,
+    "diagnostics": 10,
+    "diagnosticKinds": {
+      "nonStandardDuration": 10
+    },
+    "warnings": 10,
+    "matrixIssues": 30,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv80.8",
+    "source": "bwv80.8.xml",
+    "xmlBytes": 89436,
+    "hideBytes": 1315,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 24,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv81.7",
+    "source": "bwv81.7.xml",
+    "xmlBytes": 72351,
+    "hideBytes": 1079,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 2,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv83.5",
+    "source": "bwv83.5.xml",
+    "xmlBytes": 73057,
+    "hideBytes": 1125,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 23,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv84.5",
+    "source": "bwv84.5.xml",
+    "xmlBytes": 57690,
+    "hideBytes": 848,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 21,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv846",
+    "source": "bwv846.xml",
+    "xmlBytes": 260671,
+    "hideBytes": 2006,
+    "diagnostics": 35,
+    "diagnosticKinds": {
+      "multipleAttributes": 1,
+      "multipleVoices": 34
+    },
+    "warnings": 35,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv85.6",
+    "source": "bwv85.6.xml",
+    "xmlBytes": 103142,
+    "hideBytes": 1511,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv86.6",
+    "source": "bwv86.6.xml",
+    "xmlBytes": 71490,
+    "hideBytes": 1033,
+    "diagnostics": 1,
+    "diagnosticKinds": {
+      "nonStandardDuration": 1
+    },
+    "warnings": 1,
+    "matrixIssues": 26,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv87.7",
+    "source": "bwv87.7.xml",
+    "xmlBytes": 80646,
+    "hideBytes": 1182,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 0,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv88.7",
+    "source": "bwv88.7.xml",
+    "xmlBytes": 63513,
+    "hideBytes": 915,
+    "diagnostics": 4,
+    "diagnosticKinds": {
+      "nonStandardDuration": 4
+    },
+    "warnings": 4,
+    "matrixIssues": 16,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv89.6",
+    "source": "bwv89.6.xml",
+    "xmlBytes": 71310,
+    "hideBytes": 1093,
+    "diagnostics": 8,
+    "diagnosticKinds": {
+      "nonStandardDuration": 8
+    },
+    "warnings": 8,
+    "matrixIssues": 32,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv9.7",
+    "source": "bwv9.7.xml",
+    "xmlBytes": 81089,
+    "hideBytes": 1135,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 19,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv90.5",
+    "source": "bwv90.5.xml",
+    "xmlBytes": 83627,
+    "hideBytes": 1274,
+    "diagnostics": 5,
+    "diagnosticKinds": {
+      "nonStandardDuration": 5
+    },
+    "warnings": 5,
+    "matrixIssues": 33,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv91.6",
+    "source": "bwv91.6.xml",
+    "xmlBytes": 118650,
+    "hideBytes": 1793,
+    "diagnostics": 0,
+    "diagnosticKinds": {},
+    "warnings": 0,
+    "matrixIssues": 14,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv92.9",
+    "source": "bwv92.9.xml",
+    "xmlBytes": 96475,
+    "hideBytes": 1712,
+    "diagnostics": 16,
+    "diagnosticKinds": {
+      "nonStandardDuration": 16
+    },
+    "warnings": 16,
+    "matrixIssues": 124,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv93.7",
+    "source": "bwv93.7.xml",
+    "xmlBytes": 67650,
+    "hideBytes": 1248,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 47,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv94.8",
+    "source": "bwv94.8.xml",
+    "xmlBytes": 87242,
+    "hideBytes": 1335,
+    "diagnostics": 24,
+    "diagnosticKinds": {
+      "nonStandardDuration": 24
+    },
+    "warnings": 24,
+    "matrixIssues": 36,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv95.7",
+    "source": "bwv95.7.xml",
+    "xmlBytes": 103831,
+    "hideBytes": 1824,
+    "diagnostics": 7,
+    "diagnosticKinds": {
+      "nonStandardDuration": 7
+    },
+    "warnings": 7,
+    "matrixIssues": 100,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv96.6",
+    "source": "bwv96.6.xml",
+    "xmlBytes": 59643,
+    "hideBytes": 896,
+    "diagnostics": 9,
+    "diagnosticKinds": {
+      "nonStandardDuration": 9
+    },
+    "warnings": 9,
+    "matrixIssues": 18,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv97.9",
+    "source": "bwv97.9.xml",
+    "xmlBytes": 138416,
+    "hideBytes": 2063,
+    "diagnostics": 14,
+    "diagnosticKinds": {
+      "nonStandardDuration": 14
+    },
+    "warnings": 14,
+    "matrixIssues": 120,
+    "matrixOk": true,
+    "error": null
+  },
+  {
+    "basename": "bwv99.6",
+    "source": "bwv99.6.xml",
+    "xmlBytes": 78572,
+    "hideBytes": 1403,
+    "diagnostics": 2,
+    "diagnosticKinds": {
+      "nonStandardDuration": 2
+    },
+    "warnings": 2,
+    "matrixIssues": 68,
+    "matrixOk": true,
+    "error": null
+  }
+]

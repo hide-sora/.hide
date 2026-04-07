@@ -4,7 +4,7 @@ subtitle: "Priority Paper / 先取権公開文書"
 author: "hide-sora"
 affiliation: "Independent Researcher / Hamoren Project (https://hamoren.com)"
 repository: "https://github.com/hide-sora/.hide"
-version: "Specification v1.8 (with v1.9 Matrix-Mode roadmap)"
+version: "Specification v1.9 (v1.8 stream mode + v1.9 matrix mode, both implemented)"
 date: "2026-04-07"
 license: "Specification: CC BY 4.0. Reference implementation: MIT."
 keywords: ["symbolic music representation", "music notation language", "compact notation", "Optical Music Recognition", "Large Language Models", "multi-voice analysis", "MusicXML", "kern", "ABC notation", "computational musicology"]
@@ -16,7 +16,7 @@ keywords: ["symbolic music representation", "music notation language", "compact 
 
 **Author:** hide-sora
 **Date of public disclosure:** 2026-04-07
-**Specification version:** v1.8 (current); v1.9 Matrix-Mode roadmap included
+**Specification version:** v1.9 (v1.8 stream mode + v1.9 matrix mode; both implemented in the reference codebase)
 **Reference implementation:** TypeScript, in the *Hamoren* a-cappella practice platform (https://hamoren.com)
 **Source repository:** https://github.com/hide-sora/.hide
 
@@ -309,10 +309,20 @@ Body-level meta commands are written `[X...]`:
 | `[M3/4]` | Change time signature to 3/4. |
 | `[KC]` / `[KCm]` / `[KBb]` | Set the *original key* (C major, C minor, B♭ major). Letter form. |
 | `[K+2]` / `[K-3]` | **Transposition shift** by ±n semitones (see §3.10). |
-| `[S]` `[A]` `[T]` `[B]` | Switch to part S/A/T/B (Soprano/Alto/Tenor/Bass) — for multi-voice scores. |
-| `[P1]` `[P2]` ... | Switch to numbered part 1, 2, ... |
+| `[1]` `[2]` `[3]` ... `[N]` | Add / switch to **numbered vocal part** 1, 2, 3, … N. Intended for arbitrary-size a-cappella scores. Displayed as `Voice 1`, `Voice 2`, …. |
+| `[P]` | Add / switch to **voice percussion** (ボイスパーカッション / ボイパ). Displayed as `Voice Percussion`. Optional — an a-cappella score without VP simply omits `[P]`. |
 
-The disambiguation of `[T120]` (tempo) from `[T]` (Tenor part switch) is handled by inspecting the character immediately after `T`: a digit makes it tempo, end-of-token makes it a part switch.
+#### The general part-switch rule
+
+> **When the content inside `[...]` is exactly a sequence of digits, or exactly the single letter `P`, that meta token introduces a new part.** No other meta token introduces a part.
+
+That is, `[1]`, `[2]`, …, `[12]`, `[P]` all add a new part to the score. Returning to a previously declared label (e.g. writing `[1]` again later) appends to the same part. This is the **only** multi-part syntax in `.hide` from v1.9 onward; the older `[S][A][T][B]` SATB labels and `[P1]..[PN]` numbered-with-prefix syntax have both been **removed**. A four-part choral score is now written as `[1][2][3][4]`, not `[S][A][T][B]`.
+
+#### Why numbered + percussion is the canonical (and only) model
+
+A-cappella ensembles in practice are not four-part SATB. A typical contemporary group is **6 members** = 5 vocal parts + 1 voice percussion, and group sizes of 4, 5, 7, 8 are also common. The fixed `[S][A][T][B]` labels do not generalise to these cases without inventing arbitrary part letters; nor does it match how amateur a-cappella groups *think* about their lines (they refer to "the lead", "the second", "VP", not by classical voice taxonomy).
+
+`.hide` therefore commits to **`[1]..[N]`** as the only part-switch syntax for vocal parts, and **`[P]`** as the dedicated (and optional) voice-percussion label. The internal MIDI program for `[P]` is the same as for vocal parts (53, Voice Oohs) because voice percussion is *physically a human voice* — playback consumers may override this to a drum sound if desired.
 
 ### 3.9 Tuplets
 
@@ -403,26 +413,29 @@ For 3/4 with DIV=32, this yields 24 units per measure; for 6/8 with DIV=32, also
 
 ### 4.1 Motivation
 
-A central observation in *Hamoren*'s use case is that **multi-voice a-cappella music is intrinsically two-dimensional**: time runs along one axis, voice runs along the other. Existing per-voice serialisations (ABC `V:`, `**kern` spines, `.hide` v1.8 `[S][A][T][B]`) all *flatten* this two-dimensional object into a one-dimensional string and require the consumer to re-construct the time-alignment as a separate step.
+A central observation in *Hamoren*'s use case is that **multi-voice a-cappella music is intrinsically two-dimensional**: time runs along one axis, voice runs along the other. Existing per-voice serialisations (ABC `V:`, `**kern` spines, `.hide`'s own `[1][2][3]…[P]` part-switch stream) all *flatten* this two-dimensional object into a one-dimensional string and require the consumer to re-construct the time-alignment as a separate step.
 
-Matrix mode (v1.9, planned) treats the two-dimensional structure as a first-class language object.
+Matrix mode (v1.9, **implemented**) treats the two-dimensional structure as a first-class language object.
 
 ### 4.2 Key insight: v1.8 already accepts the grid layout
 
 Because the v1.8 lexer ignores whitespace, line breaks, and bar lines, a grid layout like
 
 ```
-[S]|C5k|E5k|G5k|C6k|
-[A]|G4k|G4k|G4k|G4k|
-[T]|E4k|C4k|E4k|E4k|
-[B]|C4k|C3k|C4k|C3k|
+[1]|C5k|E5k|G5k|C6k|
+[2]|G4k|G4k|G4k|G4k|
+[3]|E4k|C4k|E4k|E4k|
+[4]|C4k|C3k|C4k|C3k|
 ```
 
-is already a valid v1.8 document. The lexer flattens it to four part-switched streams. Matrix mode therefore does not require a parser rewrite; it requires three additions:
+is already a valid v1.9 document. The lexer flattens it to four part-switched streams. Matrix mode therefore does not require a parser rewrite; it requires two additions, both of which are now implemented in `src/hideMatrix.ts`:
 
-1. **Column-consistency checker** — verifies that each `|`-delimited column has the same total duration across all parts. A mismatch is reported as a parse warning with the offending column index.
-2. **Iterator API `iterateColumns()`** — yields a `Map<partLabel, HidePitch[]>` for each time-aligned column, enabling per-time-point queries (chord extraction, harmonic analysis, hamoring suggestion) in O(1) per column.
-3. **Strict-mode delimiter `[GRID N]...[/GRID]`** — opt-in syntactic markers that *enforce* exactly N parts per column. Non-strict mode remains the default for backward compatibility with v1.8.
+1. **Per-measure consistency checker** — verifies that each `|`-delimited *measure* has the same total duration across all parts. A mismatch is reported as a `measureDurationMismatch` / `measureCountMismatch` issue with the offending measure index. The reference implementation adds a `barline` raw lexer token (silently skipped by the v1.8 stream parser, so v1.8 compatibility is bit-for-bit preserved) and walks the raw token stream once per part to recover measure boundaries.
+2. **Iterator API `iterateMeasures()`** — yields a `HideMatrixMeasure` (containing `Map<partLabel, HideMatrixCell>` plus per-cell pitches and durations) for each time-aligned measure, enabling per-time-point queries (chord extraction, harmonic analysis, hamoring suggestion) in O(1) per measure. A companion helper `measureToChord(matrix, measure)` returns a flat `HidePitch[]` for the most common chord-extraction use.
+
+There is intentionally **no** `[GRID N]` strict-mode delimiter: the part count is already implied by the `[1]..[N]+[P]` declarations themselves, so a separate `[GRID N]` marker would be redundant. (An earlier draft of v1.9 included one; it was removed before release for vocabulary minimality.)
+
+The public API is exported from `src/index.ts` as `analyzeMatrix(source)`, `iterateMeasures(matrix)`, and `measureToChord(matrix, measure)`. The full surface and the regression tests live in `src/hideMatrix.test.ts` (vitest) and the visual harness `public/test_hide.html`.
 
 ### 4.3 Why this matters
 
@@ -441,9 +454,9 @@ Every one of these AI-assisted operations becomes essentially trivial once you h
 
 We position matrix-mode `.hide` as a **modern successor to `**kern`** for the specific use case of LLM-assisted multi-voice analysis and generation. `**kern` was designed in the era of static corpus studies; its verbosity is irrelevant because it is read by programs once and cached. `.hide` matrix mode is designed for the era where every analytic operation may involve a round-trip to an LLM, and where token budgets are the binding constraint.
 
-We intend to publish a `.hide`-encoded version of the Bach 389-chorales corpus (which is already a *Music21* / `**kern` standard reference set) to bootstrap a comparison baseline, and to invite the research community to use `.hide` as a token-economical substrate for LLM-era musicology experiments.
+We have ported the Bach chorale corpus from the *Music21* mirror (`cuthbertLab/music21/master/music21/corpus/bach`) into `.hide` as a comparison baseline, and we invite the research community to use `.hide` as a token-economical substrate for LLM-era musicology experiments. The vendored artefact lives at `corpus/bach/hide/*.hide` (410 files; the conventional "Bach 389 chorales" is the Riemenschneider 4-part SATB subset, of which 365 are present in the *Music21* mirror, the remaining 45 files being 5/6/7-part cantata movements and one solo melody). The forward conversion is regression-tested on every commit by `src/bachCorpus.test.ts` (419 cases) which re-runs `musicXmlToHide` on the original `corpus/bach/xml/*.xml` and asserts byte-equality with the vendored `.hide`.
 
-> *Disclosure of intent.* This is a plan, not a delivered artefact. We document it here so that the strategic direction is part of the priority record.
+> *Disclosure of conversion fidelity.* The Bach corpus port surfaces ~4,200 `nonStandardDuration` diagnostics across 372 of the 410 files (rare durations approximated to the nearest standard length cell, with the deviation recorded as a structured diagnostic rather than silently filled). This is not a conversion failure — every file round-trips through `analyzeMatrix` without parse error — but it is a known precision-vs-vocabulary trade-off that future work on `musicXmlToHide` may further reduce.
 
 ---
 
@@ -598,7 +611,7 @@ We record the progression of `.hide` versions to fix the date of each design dec
 | v1.5 | 2026-04 | Rule B (1-measure accidental memory). `accidentalExplicit` field on `HidePitch`. |
 | v1.6 | 2026-04 | `[K+n]` semantic redefinition: from "key signature" to "transposition shift in semitones". Original key is now expressed via letter form `[KC]` `[KBb]` etc. |
 | v1.8 | 2026-04 | **Header omission** — full `.hide` documents may have no header at all, with defaults Treble / 4-4 / C major / DIV=32. Short-form headers (e.g., `[Treble 4/4 KC D32]`) coexist with long-form (e.g., `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]`). |
-| v1.9 (planned) | 2026-04+ | Matrix mode: column-consistency checker, `iterateColumns()` API, optional strict `[GRID N]...[/GRID]` enforcement. |
+| v1.9 | 2026-04 | **Numbered + percussion part labels (the only multi-part model)** — general rule: a meta token whose content is exactly a sequence of digits or exactly the single letter `P` introduces a new part. `[1]..[N]` is for vocal parts; `[P]` is the optional voice-percussion track. Both the legacy SATB labels `[S][A][T][B]` and the legacy numbered-with-prefix `[P1]..[PN]` syntax have been **removed**; a four-part choral score is now written as `[1][2][3][4]`. *(implemented)*<br>**Matrix mode** — per-measure consistency checker, `iterateMeasures()` / `measureToChord()` API. The lexer emits `barline` raw tokens (silently ignored by the v1.8 stream parser, so v1.8 compileHide is bit-identical) and the new `analyzeMatrix()` walks the same raw stream to recover measures, then verifies that each measure has the same total duration across all parts. No `[GRID N]` strict-mode delimiter — part count is already obvious from the `[1]..[N]+[P]` declarations. Implemented in `src/hideMatrix.ts`, exported from `src/index.ts`, regression-tested in `src/hideMatrix.test.ts` (vitest) and `public/test_hide.html` (visual harness). *(implemented)* |
 
 All versions to date have been developed by hide-sora as part of the *Hamoren* project. The reference implementation lives in the project source tree under `src/lib/hide/`.
 
@@ -616,8 +629,8 @@ We document known limitations honestly:
 - **No dynamic markings (`p`, `f`, `mp`, `cresc.`).** Could be added in a future version as meta commands but are deliberately omitted in v1.8 for vocabulary minimality.
 - **Tempo changes are limited.** The current parser warns on dynamic tempo changes within the body; only the initial `[T...]` is fully supported in v1.8.
 - **Time-signature changes are limited.** As above; warned but not fully wired into the compiler.
-- **Matrix mode is not yet implemented** — only its design is documented in this paper. The implementation is on the roadmap.
-- **Conversion *from* MusicXML to `.hide`** is also planned (script `musicxml-to-hide.ts` in the project roadmap) and is necessary for the Bach-chorales corpus port mentioned in §4.4.
+- **Matrix mode is implemented in the reference codebase** as of 2026-04 (`src/hideMatrix.ts`, exported from `src/index.ts` as `analyzeMatrix` / `iterateMeasures` / `measureToChord`, with per-measure duration consistency checking). What remains future work is consumer-side tooling that *uses* the matrix iterator — chord-extraction utilities, voice-leading analysers, and the LLM-prompt construction layer that turns measure slices into hamoring-suggestion queries.
+- **Conversion *from* MusicXML to `.hide`** is implemented as `src/musicXmlToHide.ts` (with structured `MusicXmlToHideDiagnostic[]` output instead of silent normalization) and was used to deliver the Bach-chorales corpus port mentioned in §4.4 (`corpus/bach/`).
 
 These limitations are deliberate scoping decisions, not oversights, and reflect the principle that vocabulary minimality is a load-bearing constraint.
 
@@ -625,7 +638,7 @@ These limitations are deliberate scoping decisions, not oversights, and reflect 
 
 ## 11. Conclusion
 
-We have introduced `.hide`, a plain-text symbolic music notation language designed for the joint constraints of LLM context economy and consumer-device practicality. We have specified version 1.8 in full, sketched version 1.9's matrix-mode extension, and enumerated twelve specific claims of originality (§8) along with explicit acknowledgement of prior art (§2).
+We have introduced `.hide`, a plain-text symbolic music notation language designed for the joint constraints of LLM context economy and consumer-device practicality. We have specified version 1.8 in full, specified and **implemented** version 1.9's matrix-mode extension as a pure additive layer over the v1.8 stream parser, and enumerated twelve specific claims of originality (§8) along with explicit acknowledgement of prior art (§2).
 
 The combination of design choices — 3-character pitched glyphs, doubling-letter durations, case-as-articulation, transposition decoupled from key, header omission with extreme defaults, parser-irrelevant whitespace enabling backward-compatible grid mode, OMR-validated-by-compilation, and a strategic intent to provide a token-economical successor to `**kern` for the LLM era — taken together, defines a representational stance that we believe is novel and useful.
 
@@ -695,12 +708,11 @@ tie             ::= "+"
 
 meta            ::= "[" meta-content "]"
 meta-content    ::= "T" digits                       ; tempo
-                  | "T"                              ; tenor part switch
                   | "M" digits "/" digits            ; time signature change
                   | "K" sign digits                  ; transposition shift
                   | "K" key-letter                   ; original key change
-                  | "S" | "A" | "B"                  ; part switch
-                  | "P" digits                       ; numbered part switch
+                  | "P"                              ; voice percussion part switch
+                  | digits                           ; numbered vocal part switch
 key-letter      ::= ( "A"–"G" ) ( "s" | "#" | "b" )? ( "m" | "min" | "maj" )?
 
 tuplet          ::= digits "(" ( note | rest )+ ")"
@@ -720,7 +732,7 @@ clef-abbrev     ::= "Treble" | "Bass" | "Alto" | "Tenor" | "Percussion"
 
 Notes on this grammar:
 
-- The grammar is **deliberately context-free** at the lexer level. The only context-sensitive resolution is `[T...]` (tempo vs Tenor switch), which is one character of lookahead.
+- The grammar is **deliberately context-free** at the lexer level. The only context-sensitive resolution is `[T...]` — `[T120]` is a tempo meta in body context, while `[T]` *at the very start of a document* is the short-form Treble-clef header. One character of lookahead disambiguates them, and the position-zero check handles the header-vs-body distinction.
 - The lyric production is the *fallback* — anything that does not match the other productions becomes a lyric attached to the most recent note. This is what enables free-form lyric text without escaping.
 - Whitespace, `|`, and comments are valid anywhere in the body and are simply skipped.
 
@@ -768,29 +780,48 @@ C4kD4kE4kF4kG4kA4kB4kC5k
 
 The displayed key signature becomes D major (2 sharps); each pitch is re-spelled into D major's sharp direction. The original key `C` is preserved in the AST.
 
-### B.4 Multi-voice (v1.8 stream form)
+### B.4 Multi-voice (v1.8/v1.9 stream form)
 
-A simple SATB cadence, stream form:
+A simple four-voice cadence, stream form:
 
 ```
-[S]C5kB4kC5k
-[A]E4kE4kE4k
-[T]G4kG4kG4k
-[B]C3kG2kC3k
+[1]C5kB4kC5k
+[2]E4kE4kE4k
+[3]G4kG4kG4k
+[4]C3kG2kC3k
 ```
+
+Voices are introduced by `[1]`, `[2]`, … in declaration order; this score therefore renders top-to-bottom as Voice 1, Voice 2, Voice 3, Voice 4. The same convention applies to any number of parts; a four-part choral piece, a five-part contemporary a-cappella arrangement, and a seven-part jazz vocal chart all use the same syntax.
 
 ### B.5 Multi-voice (v1.9 grid form, parsed identically)
 
 The same content laid out as a grid:
 
 ```
-[S]| C5k | B4k | C5k |
-[A]| E4k | E4k | E4k |
-[T]| G4k | G4k | G4k |
-[B]| C3k | G2k | C3k |
+[1]| C5k | B4k | C5k |
+[2]| E4k | E4k | E4k |
+[3]| G4k | G4k | G4k |
+[4]| C3k | G2k | C3k |
 ```
 
-The v1.8 parser treats this as the same as B.4 because whitespace, line breaks, and `|` are all skipped. The v1.9 column-consistency checker (when implemented) will verify that each column has equal duration across all parts.
+The v1.8 stream lexer treats this as identical to B.4 because whitespace, line breaks, and `|` are all consumed transparently for `compileHide()` (the lexer emits a `barline` raw token that the stream parser silently skips). The v1.9 `analyzeMatrix()` walks the *same* raw token stream and recovers the measures, verifying that each measure has equal total duration across all parts.
+
+### B.5b Six-member a-cappella (5 vocals + voice percussion)
+
+A typical contemporary a-cappella ensemble has five vocal parts plus voice percussion. The numbered + percussion part syntax expresses this directly:
+
+```
+[1]C5kD5kE5kF5k
+[2]G4kA4kB4kC5k
+[3]E4kF4kG4kA4k
+[4]C4kD4kE4kF4k
+[5]C3kG3kC4kG3k
+[P]C2kRkC2kRk
+```
+
+Voice 1 through Voice 5 are the vocal lines, and `[P]` is the voice-percussion track. The `[P]` line uses ordinary pitches (`C2k` here as a kick-drum-like low note) because the compiler does not currently force a percussion staff — it delegates engraving to MusicXML consumers. The internal MIDI program for `[P]` is the same as the vocal parts (53, Voice Oohs); playback consumers may remap to a drum sound if desired.
+
+If the ensemble has no voice percussion, simply omit `[P]`: `[1][2][3][4][5]` is a complete five-vocal score.
 
 ### B.6 Triplet
 
@@ -837,7 +868,7 @@ Rk
 
 ## Appendix C — Token-density measurements
 
-We measured the per-measure character cost of the same musical content (a 4-bar SATB cadence) across notation languages, to substantiate the compactness claims of §6.1.
+We measured the per-measure character cost of the same musical content (a 4-bar four-voice cadence) across notation languages, to substantiate the compactness claims of §6.1.
 
 | Language | Encoding | Character count (full piece, no whitespace) | Per measure (4 bars / 4 voices) |
 |---|---|---|---|
@@ -847,11 +878,11 @@ We measured the per-measure character cost of the same musical content (a 4-bar 
 | **LilyPond** | text engraving language | ~210 | ~52 |
 | **ABC** | letter-based plain text, V: voices | ~140 | ~35 |
 | **`.hide` v1.8 (stream)** | letter-based, our language | ~110 | ~28 |
-| **`.hide` v1.9 (grid, planned)** | letter-based, columnar | ~130 | ~32 |
+| **`.hide` v1.9 (grid, implemented)** | letter-based, columnar | ~130 | ~32 |
 
 These numbers are illustrative, not benchmarks; they exclude headers and metadata, and they assume canonical encoding choices for each language. The point is the *order of magnitude*: `.hide` is roughly **30× more compact than MusicXML**, **2.5× more compact than `**kern`**, and **comparable to or slightly more compact than ABC** for the same musical content, while being the *only* language in the table that simultaneously offers (a) header omission, (b) backward-compatible grid mode, and (c) compile-to-MusicXML interoperability.
 
-A full benchmark across a standard corpus (we propose the Bach 389-chorales as the comparison set) is planned future work; we will publish the measurement methodology and the converted corpus as part of the v1.9 release.
+The converted Bach corpus is now part of this repository at `corpus/bach/hide/` (410 chorale-and-related movements from the *Music21* mirror, encompassing all 365 of the 4-part SATB chorales typically referenced as the "Bach 389-chorales" set plus 45 additional 5/6/7-part movements). A full per-language token-cost benchmark across this corpus is planned as a follow-up note; the corpus itself is sufficient for any third party to reproduce the comparison.
 
 ---
 
