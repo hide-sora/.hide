@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>.hide コンパイラ動作確認</title>
+  <style>
+    body {
+      font-family: "Zen Maru Gothic", system-ui, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    h1 { color: #333; }
+    h2 { color: #555; margin-top: 30px; border-bottom: 2px solid #888; padding-bottom: 4px; }
+    .test-case {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .label { font-weight: bold; color: #777; font-size: 0.9em; }
+    .input-source {
+      background: #1a1a2e;
+      color: #ffd86b;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: ui-monospace, "Cascadia Mono", monospace;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .musicxml {
+      background: #1a1a2e;
+      color: #b8e8ff;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: ui-monospace, "Cascadia Mono", monospace;
+      max-height: 300px;
+      overflow: auto;
+      font-size: 0.85em;
+      white-space: pre;
+    }
+    .summary {
+      background: #1a1a2e;
+      color: #0f6;
+      padding: 10px;
+      border-radius: 4px;
+      font-family: ui-monospace, "Cascadia Mono", monospace;
+      white-space: pre-wrap;
+    }
+    .pass { color: #0f6; font-weight: bold; }
+    .fail { color: #f44; font-weight: bold; }
+    .warning { color: #fc6; }
+    .osmd-container {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      min-height: 200px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.7/build/opensheetmusicdisplay.min.js"></script>
+</head>
+<body>
+  <h1>.hide コンパイラ動作確認 (v1.9 matrix mode)</h1>
+  <p>
+    ① compileHide() で MusicXML を生成し OSMD で描画 (stream mode v1.8)。<br>
+    ② analyzeMatrix() で grid-aligned 多声構造を解析 (matrix mode v1.9)。<br>
+    ③ classifyChord() で triad/seventh コード分類。<br>
+    ④ musicXmlToHide() で MusicXML → .hide 逆変換 round-trip (Bach corpus 取り込み用)。<br>
+    ⑤ <code>.</code> 系小節終止語彙 (<code>.</code>=単縦線, <code>..</code>=複縦線, <code>...</code>=終止線,
+       <code>.:</code>=繰り返し開始, <code>:.</code>=繰り返し終わり) — stream/reverse/OMR 三者で一貫する end-of-measure マーカー。
+  </p>
+  <div id="root"></div>
+
+  <script type="module">
+    import {
+      compileHide,
+      HideParseError,
+      analyzeMatrix,
+      iterateMeasures,
+      measureToChord,
+      classifyChord,
+      classifyMatrixMeasures,
+      analyzeVoiceLeading,
+      musicXmlToHide,
+    } from '/src/index.ts';
+
+    const root = document.getElementById('root');
+
+    /** ScoreModel をブラウザで動かすにはサーバーから build 済みコードが必要なので、
+     *  ここでは DOMParser によるバリデーションだけで OK */
+    function validateMusicXml(xml) {
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(xml, 'text/xml');
+      const err = doc.querySelector('parsererror');
+      return err ? err.textContent || 'unknown XML parse error' : null;
+    }
+
+    function countNotes(xml) {
+      const doc = new DOMParser().parseFromString(xml, 'text/xml');
+      const notes = doc.querySelectorAll('note');
+      const fifths = parseInt(doc.querySelector('key fifths')?.textContent || '0', 10);
+      let pitched = 0;
+      let rests = 0;
+      const pitches = [];
+      const effectivePitches = []; // 調号で暗黙的な ♯/♭ を加味した「鳴る音」
+      const lyrics = [];
+      const slurs = [];
+      const staccatos = [];
+      const ties = [];
+      const accidentals = [];
+      notes.forEach(n => {
+        if (n.querySelector('rest')) {
+          rests++;
+        } else {
+          pitched++;
+          const step = n.querySelector('pitch step')?.textContent;
+          const octave = n.querySelector('pitch octave')?.textContent;
+          const alter = n.querySelector('pitch alter')?.textContent;
+          const accEl = n.querySelector('accidental')?.textContent;
+          accidentals.push(accEl || null);
+          const sharpStr = alter === '1' ? '#' : (alter === '-1' ? 'b' : '');
+          pitches.push(`${step}${sharpStr}${octave}`);
+          // 効果ピッチ: alter があればそれ、なければ調号で暗黙
+          let effAlter = alter ? parseInt(alter, 10) : naturalAlterByKey(step, fifths);
+          const effSharp = effAlter === 1 ? '#' : (effAlter === -1 ? 'b' : '');
+          effectivePitches.push(`${step}${effSharp}${octave}`);
+          const lyric = n.querySelector('lyric text')?.textContent;
+          if (lyric) lyrics.push(lyric);
+          if (n.querySelector('slur')) slurs.push(pitches.length - 1);
+          if (n.querySelector('staccato')) staccatos.push(pitches.length - 1);
+          if (n.querySelector('tied')) ties.push(pitches.length - 1);
+        }
+      });
+      return { pitched, rests, pitches, effectivePitches, lyrics, slurs, staccatos, ties, fifths, accidentals };
+    }
+
+    function naturalAlterByKey(step, fifths) {
+      const sharpOrder = ['F', 'C', 'G', 'D', 'A', 'E', 'B'];
+      const flatOrder = ['B', 'E', 'A', 'D', 'G', 'C', 'F'];
+      if (fifths > 0) {
+        if (sharpOrder.slice(0, Math.min(fifths, 7)).includes(step)) return 1;
+      } else if (fifths < 0) {
+        if (flatOrder.slice(0, Math.min(-fifths, 7)).includes(step)) return -1;
+      }
+      return 0;
+    }
+
+    async function renderOsmd(container, xml) {
+      try {
+        const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
+          autoResize: false,
+          drawTitle: false,
+          drawComposer: false,
+          drawCredits: false,
+        });
+        await osmd.load(xml);
+        osmd.render();
+        return null;
+      } catch (e) {
+        return e.message || String(e);
+      }
+    }
+
+    const cases = [
+      // ===== M1 互換 (長形式ヘッダー) =====
+      {
+        name: '①最小の単音列 (4分音符4個)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4kD4kE4kF4k',
+        expect: { pitched: 4, lyrics: 0, pitches: ['C4', 'D4', 'E4', 'F4'] },
+      },
+      {
+        name: '②仕様書サンプル (歌詞・スラー・スタッカート)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4kゆD4kめe4jをf4jみG4Kる',
+        expect: {
+          pitched: 5,
+          lyrics: 5,
+          pitches: ['C4', 'D4', 'E4', 'F4', 'G4'],
+          slursCount: 1,
+          staccatosCount: 1,
+        },
+      },
+      {
+        name: '③和音 (Cメジャー)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4E4G4kC4E4G4kC4E4G4kC4E4G4k',
+        expect: { pitched: 12, pitches: ['C4','E4','G4','C4','E4','G4','C4','E4','G4','C4','E4','G4'] },
+      },
+      {
+        name: '④休符を含む',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4kRkD4kRk',
+        expect: { pitched: 2, rests: 2 },
+      },
+      {
+        name: '⑤タイ',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4l+C4l',
+        expect: { pitched: 2, tiesCount: 1 },
+      },
+      {
+        name: '⑥ホワイトスペース・小節線・コメント無視',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]\n; これはコメント\nC4k D4k | E4k F4k\nG4k A4k | B4k C5k',
+        expect: { pitched: 8 },
+      },
+
+      // ===== M2: v1.8 ヘッダー (省略・短縮形) =====
+      {
+        name: '⑦v1.8 ヘッダー完全省略 (デフォルト Treble/4/4/CMajor/DIV=32)',
+        source: 'C4kD4kE4kF4k',
+        expect: { pitched: 4, pitches: ['C4', 'D4', 'E4', 'F4'] },
+      },
+      {
+        name: '⑧v1.8 空ヘッダー [] (デフォルト)',
+        source: '[]C4kD4kE4kF4k',
+        expect: { pitched: 4, pitches: ['C4', 'D4', 'E4', 'F4'] },
+      },
+      {
+        name: '⑨v1.8 短縮形ヘッダー [B3/4] (Bass + 3/4 + DIV自動24)',
+        source: '[B3/4]C3kD3kE3k',
+        expect: { pitched: 3, pitches: ['C3', 'D3', 'E3'] },
+      },
+      {
+        name: '⑩v1.8 短縮形 [T4/4KG] (Treble + 4/4 + Gメジャー)',
+        source: '[T4/4KG]G4kA4kB4kC5k',
+        expect: { pitched: 4, pitches: ['G4', 'A4', 'B4', 'C5'] },
+      },
+
+      // ===== M2: v1.5 臨時記号 + Rule B =====
+      {
+        name: '⑪臨時記号 # (シャープ)',
+        source: 'C#4kD#4kE4kF#4k',
+        expect: {
+          pitched: 4,
+          pitches: ['C#4', 'D#4', 'E4', 'F#4'],
+        },
+      },
+      {
+        name: '⑫臨時記号 b (フラット) と n (ナチュラル)',
+        source: 'Bb4kBn4kBb4kBn4k',
+        expect: {
+          pitched: 4,
+          // Rule B: 同じBで b → n → b → n と切り替わる
+          // 最初の Bb = フラット、次の Bn = ナチュラル
+          pitches: ['Bb4', 'B4', 'Bb4', 'B4'],
+        },
+      },
+      {
+        name: '⑬Rule B (1小節内記憶): F#のあとF→F#扱い',
+        // F#4 を一度書けば、同じ小節内の次のF4は F# として鳴る
+        // 4/4 で C4k F#4k F4k C4k → 1小節内 → 3つ目のF4は F# 扱い (alter 出力なし)
+        source: 'C4kF#4kF4kC4k',
+        expect: {
+          pitched: 4,
+          // 出力 pitches では明示的な # は出るが、3つ目のFは Rule B により # 出力されない
+          // ここでは alter 表示を確認するのみ
+        },
+      },
+
+      // ===== M2: v1.6 移調 [K+n] =====
+      {
+        name: '⑭v1.6 移調 [K+2] (C→D方向、半音2個)',
+        source: '[T4/4KCK+2]C4kD4kE4kF4k',
+        expect: {
+          pitched: 4,
+          fifths: 2, // D major
+          // C→D, D→E, E→F#, F→G
+          // F# は調号で暗黙なので alter は出ないが、effective では F# になる
+          effectivePitches: ['D4', 'E4', 'F#4', 'G4'],
+        },
+      },
+      {
+        name: '⑮v1.6 移調 [K-1] (B方向、フラット方向)',
+        source: '[T4/4KCK-1]C4kD4kE4kF4k',
+        expect: {
+          pitched: 4,
+          // semitones=-1 → fifths_delta=(-1*7)mod12=-7 → 正規化で 5 (= B major)
+          // C→B, D→C#, E→D#, F→E
+          fifths: 5,
+          effectivePitches: ['B3', 'C#4', 'D#4', 'E4'],
+        },
+      },
+
+      // ===== M2: 3/4拍子 + DIV自動 =====
+      {
+        name: '⑯3/4拍子 (DIV自動24)',
+        source: '[T3/4]C4kD4kE4k',
+        expect: { pitched: 3, pitches: ['C4', 'D4', 'E4'] },
+      },
+
+      // ===== v1.9: 番号付きパート + voice percussion (任意人数アカペラ) =====
+      // 旧 [S][A][T][B] / [P1] は v1.9 で廃止。4声でも [1][2][3][4] を使う。
+      {
+        name: '⑰4声合唱 ([1][2][3][4] = 旧 SATB 相当)',
+        source: '[1]C5kE5kG5kF5k[2]G4kG4kC5kA4k[3]E4kC4kE4kC4k[4]C3kC3kC3kF2k',
+        expect: {
+          pitched: 16,
+          partsCount: 4,
+        },
+      },
+      {
+        name: '⑱2パートで長さ違い (短いパートに自動全休符補完)',
+        // [1] は 2小節分(8音)、[2] は 1小節分(4音)
+        source: '[1]C5kD5kE5kF5kG5kA5kB5kC6k[2]E4kF4kG4kA4k',
+        expect: {
+          pitched: 12,
+          partsCount: 2,
+        },
+      },
+      {
+        name: '⑱-b 6人アカペラ (5ボーカル + ボイパ [1][2][3][4][5][P])',
+        source:
+          '[1]C5kD5kE5kF5k' +
+          '[2]G4kA4kB4kC5k' +
+          '[3]E4kF4kG4kA4k' +
+          '[4]C4kD4kE4kF4k' +
+          '[5]C3kG3kC4kG3k' +
+          '[P]C2kRkC2kRk',
+        expect: {
+          // 6 パート x 4 音/休符 = 24 のうち、ピッチドノートは 5*4 + 2 = 22
+          // (P は C2k C2k の 2音 + 休符 2)
+          pitched: 22,
+          rests: 2,
+          partsCount: 6,
+        },
+      },
+      {
+        name: '⑱-c 5人アカペラ ([P] なし、ボイパ無しグループ)',
+        source: '[1]C5k[2]G4k[3]E4k[4]C4k[5]C3k',
+        expect: {
+          pitched: 5,
+          partsCount: 5,
+        },
+      },
+      {
+        name: '⑱-d 旧 [P1] は v1.9 で廃止 (parse エラーになるべき)',
+        source: '[P1]C4k',
+        expectThrow: true,
+      },
+      {
+        name: '⑱-e 旧 [S] は v1.9 で廃止 (parse エラーになるべき)',
+        // 注: [S]C4k は文書冒頭の [S] として body 側で評価される
+        // (looksLikeHeader は S を header マーカーに含めないため)
+        source: 'C4k[S]D4k',
+        expectThrow: true,
+      },
+
+      // ===== M2: 反復 :body:N =====
+      {
+        name: '⑲単純反復 (:CDEF:2 → CDEFCDEF)',
+        source: ':C4kD4kE4kF4k:2',
+        expect: {
+          pitched: 8,
+          pitches: ['C4','D4','E4','F4','C4','D4','E4','F4'],
+        },
+      },
+      {
+        name: '⑳ネスト反復 (:A4k:B4k:2:3 → A BB A BB A BB)',
+        source: ':A4k:B4k:2:3',
+        expect: {
+          pitched: 9,
+          pitches: ['A4','B4','B4','A4','B4','B4','A4','B4','B4'],
+        },
+      },
+
+      // ===== M2: 連符 N(...) =====
+      {
+        name: '㉑3連符 (8(C4jD4jE4j) + 4分音符 → 三連符 + 4分)',
+        source: '8(C4jD4jE4j)C4k',
+        expect: {
+          pitched: 4,
+          pitches: ['C4','D4','E4','C4'],
+          tupletGroup: { actual: 3, normal: 2, count: 3 },
+        },
+      },
+      {
+        name: '㉒5連符 (8(C4iD4iE4iF4iG4i) → 5 in time of 4 sixteenths)',
+        // 8u target に 5 個の i (16分音符)。8/2=4 normal notes → 5:4 の連符
+        source: '8(C4iD4iE4iF4iG4i)',
+        expect: {
+          pitched: 5,
+          pitches: ['C4','D4','E4','F4','G4'],
+          tupletGroup: { actual: 5, normal: 4, count: 5 },
+        },
+      },
+
+      // ===== v1.9 matrix mode (compileHide はそのまま動くか確認するだけ) =====
+      // 詳細は後段の "Matrix mode tests" セクションで analyzeMatrix() を直接叩く
+      {
+        name: '㉓matrix layout (4声 grid form, B.5) — stream mode 互換性確認',
+        // README §B.5 より。barline を挟んだ grid layout は stream mode でも
+        // そのままパースできる必要がある (lexer が barline を読み飛ばすため)
+        source:
+          '[1]| C5k | B4k | C5k |\n' +
+          '[2]| E4k | E4k | E4k |\n' +
+          '[3]| G4k | G4k | G4k |\n' +
+          '[4]| C3k | G2k | C3k |',
+        expect: { pitched: 12, partsCount: 4 },
+      },
+      {
+        name: '㉔matrix layout (6人 grid form, [P]含む) — stream mode 互換性確認',
+        source:
+          '[1]| C5k | D5k | E5k | F5k |\n' +
+          '[2]| G4k | A4k | B4k | C5k |\n' +
+          '[3]| E4k | F4k | G4k | A4k |\n' +
+          '[4]| C4k | D4k | E4k | F4k |\n' +
+          '[5]| C3k | G3k | C4k | G3k |\n' +
+          '[P]| C2k | Rk  | C2k | Rk  |',
+        expect: { pitched: 22, rests: 2, partsCount: 6 },
+      },
+    ];
+
+    // ============================================================
+    // v1.9 Matrix mode tests (analyzeMatrix を直接叩く)
+    // ============================================================
+    const matrixCases = [
+      {
+        name: 'M①4声 grid form (B.5) — 小節数3, 全小節 duration 一致, 警告なし',
+        // 各 cell = 全音符 1 個 = 32u = 4/4 DIV=32 で full measure
+        source:
+          '[1]| C5m | B4m | C5m |\n' +
+          '[2]| E4m | E4m | E4m |\n' +
+          '[3]| G4m | G4m | G4m |\n' +
+          '[4]| C3m | G2m | C3m |',
+        expect: {
+          partLabels: ['1', '2', '3', '4'],
+          measureCount: 3,
+          issuesEmpty: true,
+          // 各小節の chord (パート宣言順 × cell 順) を ピッチ文字列で確認
+          measureChords: [
+            ['C5', 'E4', 'G4', 'C3'],
+            ['B4', 'E4', 'G4', 'G2'],
+            ['C5', 'E4', 'G4', 'C3'],
+          ],
+        },
+      },
+      {
+        name: 'M②6人 grid form (5ボーカル+VP) — 小節数4, 全小節 duration 一致',
+        source:
+          '[1]| C5m | D5m | E5m | F5m |\n' +
+          '[2]| G4m | A4m | B4m | C5m |\n' +
+          '[3]| E4m | F4m | G4m | A4m |\n' +
+          '[4]| C4m | D4m | E4m | F4m |\n' +
+          '[5]| C3m | G3m | C4m | G3m |\n' +
+          '[P]| C2m | Rm  | C2m | Rm  |',
+        expect: {
+          partLabels: ['1', '2', '3', '4', '5', 'P'],
+          measureCount: 4,
+          issuesEmpty: true,
+        },
+      },
+      {
+        name: 'M③小節 duration 不一致 → measureDurationMismatch 警告',
+        // [1] の2小節目だけ 半音符 (16u) で他は全音符 (32u)
+        // → 2小節目だけが unitsPerMeasure 不一致 + パート間不一致
+        source:
+          '[1]| C4m | C4l | C4m |\n' +
+          '[2]| E4m | G4m | C4m |',
+        expect: {
+          partLabels: ['1', '2'],
+          measureCount: 3,
+          hasIssueKind: 'measureDurationMismatch',
+          mismatchMeasureIndex: 1,
+        },
+      },
+      {
+        name: 'M④小節数不一致 → measureCountMismatch 警告',
+        // [1] は3小節、[2] は2小節 (各 cell は全音符 = full measure)
+        source:
+          '[1]| C4m | D4m | E4m |\n' +
+          '[2]| F4m | G4m       |',
+        expect: {
+          partLabels: ['1', '2'],
+          measureCount: 3,
+          hasIssueKind: 'measureCountMismatch',
+        },
+      },
+      {
+        name: 'M⑤stream form でも matrix mode が動く (B.4 ストリーム形式)',
+        // 各パート = 全音符 1 個 = full measure
+        source: '[1]C5m[2]E4m[3]G4m[4]C3m',
+        expect: {
+          partLabels: ['1', '2', '3', '4'],
+          // barline がないので 全部1小節
+          measureCount: 1,
+          issuesEmpty: true,
+        },
+      },
+      {
+        name: 'M⑥iterateMeasures の generator 性',
+        source:
+          '[1]| C4m | D4m | E4m |\n' +
+          '[2]| G4m | A4m | B4m |',
+        expect: {
+          measureCount: 3,
+          // generator から取り出して長さを検証
+          generatorLength: 3,
+        },
+      },
+      {
+        name: 'M⑦パート未宣言 → 単一パート "M" として扱う',
+        source: 'C4m|D4m|E4m|F4m',
+        expect: {
+          partLabels: ['M'],
+          measureCount: 4,
+          issuesEmpty: true,
+        },
+      },
+      {
+        name: 'M⑧空セル (内部空セルは duration=0u → ヘッダー期待値 32u と不一致)',
+        // 周辺は full measure、中央だけ意図的に空 → そこだけが issue 対象になる
+        source:
+          '[1]| C4m |     | E4m |\n' +
+          '[2]| F4m | G4m | A4m |',
+        expect: {
+          // (a) 中央 cell は durationUnits=0 で unitsPerMeasure=32 と不一致
+          // (b) 同じ小節で part2 (32u) ともパート間不一致 (これは派生)
+          hasIssueKind: 'measureDurationMismatch',
+          mismatchMeasureIndex: 1,
+        },
+      },
+    ];
+
+    function pass(text) {
+      const span = document.createElement('span');
+      span.className = 'pass';
+      span.textContent = `✅ ${text}`;
+      return span;
+    }
+    function fail(text) {
+      const span = document.createElement('span');
+      span.className = 'fail';
+      span.textContent = `❌ ${text}`;
+      return span;
+    }
+
+    let totalPass = 0;
+    let totalFail = 0;
+
+    for (const tc of cases) {
+      const card = document.createElement('div');
+      card.className = 'test-case';
+      const checks = [];
+
+      const title = document.createElement('h3');
+      title.textContent = tc.name;
+      card.appendChild(title);
+
+      const sourceLabel = document.createElement('div');
+      sourceLabel.className = 'label';
+      sourceLabel.textContent = '入力 (.hide):';
+      card.appendChild(sourceLabel);
+
+      const sourceBox = document.createElement('div');
+      sourceBox.className = 'input-source';
+      sourceBox.textContent = tc.source;
+      card.appendChild(sourceBox);
+
+      let result;
+      try {
+        result = compileHide(tc.source, { title: tc.name });
+        if (tc.expectThrow) {
+          checks.push(fail('compileHide() succeeded but expected to throw'));
+          const summary = document.createElement('div');
+          summary.className = 'summary';
+          summary.append(...checks.flatMap(c => [c, document.createTextNode('\n')]));
+          card.appendChild(summary);
+          root.appendChild(card);
+          totalFail++;
+          continue;
+        }
+        checks.push(pass('compileHide() success'));
+      } catch (e) {
+        if (tc.expectThrow) {
+          // 期待通り throw した
+          checks.push(pass(`compileHide() threw as expected: ${e.message}`));
+          const summary = document.createElement('div');
+          summary.className = 'summary';
+          summary.append(...checks.flatMap(c => [c, document.createTextNode('\n')]));
+          card.appendChild(summary);
+          root.appendChild(card);
+          totalPass++;
+          continue;
+        }
+        checks.push(fail(`compileHide threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks.flatMap(c => [c, document.createTextNode('\n')]));
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      const xmlErr = validateMusicXml(result.musicXml);
+      if (xmlErr) {
+        checks.push(fail(`MusicXML invalid: ${xmlErr}`));
+      } else {
+        checks.push(pass('MusicXML well-formed'));
+      }
+
+      const stats = countNotes(result.musicXml);
+
+      if (tc.expect.pitched !== undefined) {
+        if (stats.pitched === tc.expect.pitched) {
+          checks.push(pass(`pitched notes = ${stats.pitched}`));
+        } else {
+          checks.push(fail(`pitched notes expected ${tc.expect.pitched}, got ${stats.pitched}`));
+        }
+      }
+      if (tc.expect.rests !== undefined) {
+        if (stats.rests >= tc.expect.rests) {
+          checks.push(pass(`rests ≥ ${tc.expect.rests} (got ${stats.rests})`));
+        } else {
+          checks.push(fail(`rests expected ≥ ${tc.expect.rests}, got ${stats.rests}`));
+        }
+      }
+      if (tc.expect.lyrics !== undefined) {
+        if (stats.lyrics.length === tc.expect.lyrics) {
+          checks.push(pass(`lyrics count = ${stats.lyrics.length} [${stats.lyrics.join(',')}]`));
+        } else {
+          checks.push(fail(`lyrics expected ${tc.expect.lyrics}, got ${stats.lyrics.length} [${stats.lyrics.join(',')}]`));
+        }
+      }
+      if (tc.expect.pitches) {
+        const exp = tc.expect.pitches.join(',');
+        const got = stats.pitches.join(',');
+        if (exp === got) {
+          checks.push(pass(`pitch sequence = ${got}`));
+        } else {
+          checks.push(fail(`pitch sequence expected [${exp}], got [${got}]`));
+        }
+      }
+      if (tc.expect.effectivePitches) {
+        const exp = tc.expect.effectivePitches.join(',');
+        const got = stats.effectivePitches.join(',');
+        if (exp === got) {
+          checks.push(pass(`effective pitches (with key) = ${got}`));
+        } else {
+          checks.push(fail(`effective pitches expected [${exp}], got [${got}]`));
+        }
+      }
+      if (tc.expect.fifths !== undefined) {
+        if (stats.fifths === tc.expect.fifths) {
+          checks.push(pass(`key fifths = ${stats.fifths}`));
+        } else {
+          checks.push(fail(`key fifths expected ${tc.expect.fifths}, got ${stats.fifths}`));
+        }
+      }
+      if (tc.expect.slursCount !== undefined) {
+        if (stats.slurs.length >= tc.expect.slursCount) {
+          checks.push(pass(`slurs ≥ ${tc.expect.slursCount} (got ${stats.slurs.length} at idx ${stats.slurs.join(',')})`));
+        } else {
+          checks.push(fail(`slurs expected ≥ ${tc.expect.slursCount}, got ${stats.slurs.length}`));
+        }
+      }
+      if (tc.expect.staccatosCount !== undefined) {
+        if (stats.staccatos.length >= tc.expect.staccatosCount) {
+          checks.push(pass(`staccatos ≥ ${tc.expect.staccatosCount} (got ${stats.staccatos.length} at idx ${stats.staccatos.join(',')})`));
+        } else {
+          checks.push(fail(`staccatos expected ≥ ${tc.expect.staccatosCount}, got ${stats.staccatos.length}`));
+        }
+      }
+      if (tc.expect.tiesCount !== undefined) {
+        if (stats.ties.length >= tc.expect.tiesCount) {
+          checks.push(pass(`ties ≥ ${tc.expect.tiesCount} (got ${stats.ties.length})`));
+        } else {
+          checks.push(fail(`ties expected ≥ ${tc.expect.tiesCount}, got ${stats.ties.length}`));
+        }
+      }
+
+      // 警告表示
+      for (const w of result.warnings) {
+        const wn = document.createElement('span');
+        wn.className = 'warning';
+        wn.textContent = `⚠️  ${w}`;
+        checks.push(wn);
+      }
+
+      const summaryLabel = document.createElement('div');
+      summaryLabel.className = 'label';
+      summaryLabel.style.marginTop = '8px';
+      summaryLabel.textContent = '結果:';
+      card.appendChild(summaryLabel);
+
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      checks.forEach((c, i) => {
+        summary.appendChild(c);
+        if (i < checks.length - 1) summary.appendChild(document.createTextNode('\n'));
+      });
+      card.appendChild(summary);
+
+      // MusicXML 出力プレビュー
+      const xmlLabel = document.createElement('div');
+      xmlLabel.className = 'label';
+      xmlLabel.style.marginTop = '8px';
+      xmlLabel.textContent = `MusicXML (${result.musicXml.length} chars, ${result.measuresCount} measures):`;
+      card.appendChild(xmlLabel);
+
+      const xmlBox = document.createElement('div');
+      xmlBox.className = 'musicxml';
+      xmlBox.textContent = result.musicXml;
+      card.appendChild(xmlBox);
+
+      // OSMD 描画
+      const osmdLabel = document.createElement('div');
+      osmdLabel.className = 'label';
+      osmdLabel.style.marginTop = '8px';
+      osmdLabel.textContent = 'OSMD 描画:';
+      card.appendChild(osmdLabel);
+
+      const osmdContainer = document.createElement('div');
+      osmdContainer.className = 'osmd-container';
+      card.appendChild(osmdContainer);
+
+      root.appendChild(card);
+
+      const osmdErr = await renderOsmd(osmdContainer, result.musicXml);
+      if (osmdErr) {
+        const errLine = fail(`OSMD render failed: ${osmdErr}`);
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(errLine);
+        totalFail++;
+      } else {
+        const okLine = pass('OSMD render success');
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(okLine);
+        if (checks.every(c => c.className !== 'fail')) {
+          totalPass++;
+        } else {
+          totalFail++;
+        }
+      }
+    }
+
+    // ============================================================
+    // Matrix mode tests (analyzeMatrix を直接叩く / OSMD は使わない)
+    // ============================================================
+    function pitchToString(p) {
+      const accStr = p.alter === 1 ? '#' : (p.alter === -1 ? 'b' : '');
+      return `${p.step}${accStr}${p.octave}`;
+    }
+
+    const matrixHeader = document.createElement('h2');
+    matrixHeader.textContent = 'v1.9 Matrix mode tests';
+    root.appendChild(matrixHeader);
+
+    for (const tc of matrixCases) {
+      const card = document.createElement('div');
+      card.className = 'test-case';
+      const checks = [];
+
+      const title = document.createElement('h3');
+      title.textContent = tc.name;
+      card.appendChild(title);
+
+      const sourceLabel = document.createElement('div');
+      sourceLabel.className = 'label';
+      sourceLabel.textContent = '入力 (.hide):';
+      card.appendChild(sourceLabel);
+
+      const sourceBox = document.createElement('div');
+      sourceBox.className = 'input-source';
+      sourceBox.textContent = tc.source;
+      card.appendChild(sourceBox);
+
+      let result;
+      try {
+        result = analyzeMatrix(tc.source);
+        checks.push(pass('analyzeMatrix() success'));
+      } catch (e) {
+        checks.push(fail(`analyzeMatrix threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks.flatMap(c => [c, document.createTextNode('\n')]));
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      const m = result.matrix;
+      const exp = tc.expect;
+
+      // パートラベル列
+      if (exp.partLabels) {
+        const got = m.partLabels.join(',');
+        const want = exp.partLabels.join(',');
+        if (got === want) checks.push(pass(`partLabels = [${got}]`));
+        else checks.push(fail(`partLabels expected [${want}], got [${got}]`));
+      }
+
+      // 小節数
+      if (exp.measureCount !== undefined) {
+        if (m.measures.length === exp.measureCount) {
+          checks.push(pass(`measure count = ${m.measures.length}`));
+        } else {
+          checks.push(fail(`measure count expected ${exp.measureCount}, got ${m.measures.length}`));
+        }
+      }
+
+      // 小節ごとの chord (パート宣言順 × cell 順 で連結)
+      if (exp.measureChords) {
+        for (let mi = 0; mi < exp.measureChords.length; mi++) {
+          const measure = m.measures[mi];
+          if (!measure) {
+            checks.push(fail(`measure ${mi} missing`));
+            continue;
+          }
+          const chord = measureToChord(m, measure).map(pitchToString);
+          const want = exp.measureChords[mi];
+          if (chord.join(',') === want.join(',')) {
+            checks.push(pass(`measure ${mi} chord = [${chord.join(',')}]`));
+          } else {
+            checks.push(fail(`measure ${mi} chord expected [${want.join(',')}], got [${chord.join(',')}]`));
+          }
+        }
+      }
+
+      // 警告 0 件期待
+      if (exp.issuesEmpty) {
+        if (result.issues.length === 0) {
+          checks.push(pass('issues = [] (no warnings)'));
+        } else {
+          checks.push(fail(`issues expected [], got ${result.issues.length}: ${result.issues.map(i => i.kind).join(',')}`));
+        }
+      }
+
+      // 特定の issue 種別
+      if (exp.hasIssueKind) {
+        const found = result.issues.find(i => i.kind === exp.hasIssueKind);
+        if (found) {
+          checks.push(pass(`issue '${exp.hasIssueKind}' present: ${found.message}`));
+        } else {
+          checks.push(fail(`issue '${exp.hasIssueKind}' expected, got [${result.issues.map(i => i.kind).join(',')}]`));
+        }
+      }
+
+      // 小節インデックスを伴う mismatch
+      if (exp.mismatchMeasureIndex !== undefined) {
+        const found = result.issues.find(i => i.measureIndex === exp.mismatchMeasureIndex);
+        if (found) {
+          checks.push(pass(`issue with measureIndex=${exp.mismatchMeasureIndex} present`));
+        } else {
+          checks.push(fail(`issue with measureIndex=${exp.mismatchMeasureIndex} not found`));
+        }
+      }
+
+      // generator length
+      if (exp.generatorLength !== undefined) {
+        const arr = [...iterateMeasures(m)];
+        if (arr.length === exp.generatorLength) {
+          checks.push(pass(`iterateMeasures yielded ${arr.length} measures`));
+        } else {
+          checks.push(fail(`iterateMeasures expected ${exp.generatorLength}, got ${arr.length}`));
+        }
+      }
+
+      const summaryLabel = document.createElement('div');
+      summaryLabel.className = 'label';
+      summaryLabel.style.marginTop = '8px';
+      summaryLabel.textContent = '結果:';
+      card.appendChild(summaryLabel);
+
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      checks.forEach((c, i) => {
+        summary.appendChild(c);
+        if (i < checks.length - 1) summary.appendChild(document.createTextNode('\n'));
+      });
+      card.appendChild(summary);
+
+      // 小節状態をデバッグ表示 (人間が眺めて分かるように)
+      const measuresLabel = document.createElement('div');
+      measuresLabel.className = 'label';
+      measuresLabel.style.marginTop = '8px';
+      measuresLabel.textContent = `Measures (${m.measures.length}):`;
+      card.appendChild(measuresLabel);
+
+      const measuresBox = document.createElement('div');
+      measuresBox.className = 'musicxml';
+      const lines = [];
+      for (const measure of iterateMeasures(m)) {
+        const cellStrs = [];
+        for (const label of m.partLabels) {
+          const cell = measure.cells.get(label);
+          if (cell) {
+            const ps = cell.pitches.map(pitchToString).join(' ');
+            cellStrs.push(`[${label}]${ps || '(rest)'} (${cell.durationUnits}u)`);
+          } else {
+            cellStrs.push(`[${label}](missing)`);
+          }
+        }
+        lines.push(`小節 ${measure.index + 1}: ${cellStrs.join(' | ')}`);
+      }
+      measuresBox.textContent = lines.join('\n') || '(no measures)';
+      card.appendChild(measuresBox);
+
+      // issue 一覧
+      if (result.issues.length > 0) {
+        const issuesLabel = document.createElement('div');
+        issuesLabel.className = 'label';
+        issuesLabel.style.marginTop = '8px';
+        issuesLabel.textContent = 'Issues:';
+        card.appendChild(issuesLabel);
+        const issuesBox = document.createElement('div');
+        issuesBox.className = 'summary';
+        issuesBox.textContent = result.issues
+          .map(i => `[${i.kind}] ${i.message}`)
+          .join('\n');
+        card.appendChild(issuesBox);
+      }
+
+      root.appendChild(card);
+
+      if (checks.every(c => c.className !== 'fail')) {
+        totalPass++;
+      } else {
+        totalFail++;
+      }
+    }
+
+    // ============================================================
+    // v1.9 Chord classification tests (classifyChord / classifyMatrixMeasures)
+    // ============================================================
+    const chordCases = [
+      {
+        name: 'C① Cmaj triad (root position)',
+        source:
+          '[1]| C5k |\n' +
+          '[2]| G4k |\n' +
+          '[3]| E4k |\n' +
+          '[4]| C3k |',
+        expectLabels: ['Cmaj'],
+      },
+      {
+        name: 'C② I-IV-V-I in C major (4-part)',
+        source:
+          '[1]| C5k | C5k | B4k | C5k |\n' +
+          '[2]| G4k | A4k | G4k | G4k |\n' +
+          '[3]| E4k | F4k | D4k | E4k |\n' +
+          '[4]| C3k | F2k | G2k | C3k |',
+        expectLabels: ['Cmaj', 'Fmaj', 'Gmaj', 'Cmaj'],
+      },
+      {
+        name: 'C③ Inversion: Cmaj/E + Cmaj/G + Cmaj (root position)',
+        source:
+          '[1]| C5k | E5k | G5k |\n' +
+          '[2]| G4k | C5k | E5k |\n' +
+          '[3]| E3k | G3k | C3k |',
+        expectLabels: ['Cmaj/E', 'Cmaj/G', 'Cmaj'],
+      },
+      {
+        name: 'C④ 7th chords: Cmaj7 / Cdom7 / Dmin7',
+        source:
+          '[1]| B4k | A#4k | C5k |\n' +
+          '[2]| G4k | G4k  | A4k |\n' +
+          '[3]| E4k | E4k  | F4k |\n' +
+          '[4]| C3k | C3k  | D3k |',
+        expectLabels: ['Cmaj7', 'Cdom7', 'Dmin7'],
+      },
+      {
+        name: 'C⑤ Non-classifiable: 同音 only → null',
+        source:
+          '[1]| C4k |\n' +
+          '[2]| C4k |',
+        expectLabels: [null],
+      },
+    ];
+
+    const chordHeader = document.createElement('h2');
+    chordHeader.textContent = 'v1.9 Chord classification tests';
+    root.appendChild(chordHeader);
+
+    for (const tc of chordCases) {
+      const card = document.createElement('div');
+      card.className = 'test-case';
+      const checks = [];
+
+      const title = document.createElement('h3');
+      title.textContent = tc.name;
+      card.appendChild(title);
+
+      const sourceLabel = document.createElement('div');
+      sourceLabel.className = 'label';
+      sourceLabel.textContent = '入力 (.hide):';
+      card.appendChild(sourceLabel);
+      const sourceBox = document.createElement('div');
+      sourceBox.className = 'input-source';
+      sourceBox.textContent = tc.source;
+      card.appendChild(sourceBox);
+
+      let labels;
+      try {
+        const { matrix } = analyzeMatrix(tc.source);
+        labels = classifyMatrixMeasures(matrix);
+        checks.push(pass('classifyMatrixMeasures() success'));
+      } catch (e) {
+        checks.push(fail(`threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks);
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      const got = labels.map(l => l ? l.symbol : 'null');
+      const want = tc.expectLabels.map(l => l ?? 'null');
+      if (got.join(' ') === want.join(' ')) {
+        checks.push(pass(`labels = [${got.join(', ')}]`));
+      } else {
+        checks.push(fail(`labels expected [${want.join(', ')}], got [${got.join(', ')}]`));
+      }
+
+      const summaryLabel = document.createElement('div');
+      summaryLabel.className = 'label';
+      summaryLabel.style.marginTop = '8px';
+      summaryLabel.textContent = '結果:';
+      card.appendChild(summaryLabel);
+
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      checks.forEach((c, i) => {
+        summary.appendChild(c);
+        if (i < checks.length - 1) summary.appendChild(document.createTextNode('\n'));
+      });
+      card.appendChild(summary);
+
+      // 各小節の詳細表示
+      const detailLabel = document.createElement('div');
+      detailLabel.className = 'label';
+      detailLabel.style.marginTop = '8px';
+      detailLabel.textContent = `Per-measure (${labels.length}):`;
+      card.appendChild(detailLabel);
+      const detailBox = document.createElement('div');
+      detailBox.className = 'musicxml';
+      detailBox.textContent = labels
+        .map((l, i) => `小節 ${i + 1}: ${l ? `${l.symbol}  (root=${l.root}, quality=${l.quality}, bass=${l.bass}${l.inverted ? ', inverted' : ''})` : 'null (not classified)'}`)
+        .join('\n');
+      card.appendChild(detailBox);
+
+      root.appendChild(card);
+
+      if (checks.every(c => c.className !== 'fail')) {
+        totalPass++;
+      } else {
+        totalFail++;
+      }
+    }
+
+    // ============================================================
+    // v1.9 Voice leading observation tests (analyzeVoiceLeading)
+    // ============================================================
+    // 古典和声で「避けられる」とされる動きを caution として浮上させる
+    // descriptive な observation API。Hamoren はポップ/現代アカペラを対象と
+    // するため、これらは「禁則」ではなく単なる「注意」レベル。
+    const voiceLeadingCases = [
+      {
+        name: 'VL① 平行 5 度 (C5+F4 → D5+G4) — parallelFifths を浮上',
+        // C5-F4 = P5 (60-53=7), D5-G4 = P5 (62-55=7), 両方 +2
+        source:
+          '[1]| C5m | D5m |\n' +
+          '[2]| F4m | G4m |',
+        expectKinds: ['parallelFifths'],
+      },
+      {
+        name: 'VL② 平行 8 度 (C5+C4 → D5+D4) — parallelOctaves',
+        source:
+          '[1]| C5m | D5m |\n' +
+          '[2]| C4m | D4m |',
+        expectKinds: ['parallelOctaves'],
+      },
+      {
+        name: 'VL③ 反進行 (contrary motion) — observation 0 件',
+        // [1] +2, [2] -1
+        source:
+          '[1]| C5m | D5m |\n' +
+          '[2]| F4m | E4m |',
+        expectKinds: [],
+      },
+      {
+        name: 'VL④ 直行 5 度 (m6 → P5 in similar motion) — directFifths',
+        // [1] C5→D5 (+2), [2] E4→G4 (+3): C5-E4=8 (m6) → D5-G4=7 (P5)
+        source:
+          '[1]| C5m | D5m |\n' +
+          '[2]| E4m | G4m |',
+        expectKinds: ['directFifths'],
+      },
+      {
+        name: 'VL⑤ 声部交差 ([1] が [2] より下に) — voiceCrossing',
+        // 小節 2 で [1]=E4 (52), [2]=G4 (55)
+        source:
+          '[1]| C5m | E4m |\n' +
+          '[2]| G4m | G4m |',
+        expectKinds: ['voiceCrossing'],
+      },
+      {
+        name: 'VL⑥ 大跳躍 ([1] +13 半音 = octave 超) — largeLeap',
+        source:
+          '[1]| C4m | Cs5m |\n' +
+          '[2]| E3m | E3m  |',
+        expectKinds: ['largeLeap'],
+      },
+      {
+        name: 'VL⑦ 5パート全 10 ペア検査 — 非隣接 [1]-[3] の平行 5 度を検出',
+        // [1]+2, [3]+2 で C5-F4=P5 → D5-G4=P5、他は静止
+        source:
+          '[1]| C5m | D5m |\n' +
+          '[2]| G4m | G4m |\n' +
+          '[3]| F4m | G4m |\n' +
+          '[4]| C4m | C4m |\n' +
+          '[5]| F3m | F3m |',
+        expectKinds: ['parallelFifths'],
+        expectPairs: [['1', '3']],
+      },
+      {
+        name: 'VL⑧ オクターブ閾値: ちょうど +12 半音は largeLeap として浮上しない',
+        // [1] C4 → C5 = +12. 閾値は > 12
+        source:
+          '[1]| C4m | C5m |\n' +
+          '[2]| E3m | E3m |',
+        expectKinds: [],
+      },
+    ];
+
+    const vlHeader = document.createElement('h2');
+    vlHeader.textContent = 'v1.9 Voice leading observation tests';
+    root.appendChild(vlHeader);
+
+    for (const tc of voiceLeadingCases) {
+      const card = document.createElement('div');
+      card.className = 'test-case';
+      const checks = [];
+
+      const title = document.createElement('h3');
+      title.textContent = tc.name;
+      card.appendChild(title);
+
+      const sourceLabel = document.createElement('div');
+      sourceLabel.className = 'label';
+      sourceLabel.textContent = '入力 (.hide):';
+      card.appendChild(sourceLabel);
+      const sourceBox = document.createElement('div');
+      sourceBox.className = 'input-source';
+      sourceBox.textContent = tc.source;
+      card.appendChild(sourceBox);
+
+      let analysis;
+      try {
+        const { matrix } = analyzeMatrix(tc.source);
+        analysis = analyzeVoiceLeading(matrix);
+        checks.push(pass('analyzeVoiceLeading() success'));
+      } catch (e) {
+        checks.push(fail(`threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks);
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      // 期待 observation kinds が全部出ていることを確認
+      const gotKinds = analysis.observations.map(o => o.kind);
+      let kindsOk = true;
+      for (const k of tc.expectKinds) {
+        if (!gotKinds.includes(k)) {
+          checks.push(fail(`expected observation '${k}' missing (got: [${gotKinds.join(',')}])`));
+          kindsOk = false;
+        }
+      }
+      // 期待が空のときは observation も空であるべき
+      if (tc.expectKinds.length === 0 && gotKinds.length > 0) {
+        checks.push(fail(`expected no observations, got [${gotKinds.join(',')}]`));
+        kindsOk = false;
+      }
+      if (kindsOk && tc.expectKinds.length > 0) {
+        checks.push(pass(`observations include [${tc.expectKinds.join(',')}]`));
+      } else if (kindsOk) {
+        checks.push(pass('observations = [] (no caution)'));
+      }
+
+      // パートペア期待
+      if (tc.expectPairs) {
+        for (const pair of tc.expectPairs) {
+          const found = analysis.observations.find(
+            o => o.parts.length === 2 && o.parts[0] === pair[0] && o.parts[1] === pair[1],
+          );
+          if (found) {
+            checks.push(pass(`pair [${pair.join('-')}] flagged`));
+          } else {
+            checks.push(fail(`pair [${pair.join('-')}] not found`));
+          }
+        }
+      }
+
+      const summaryLabel = document.createElement('div');
+      summaryLabel.className = 'label';
+      summaryLabel.style.marginTop = '8px';
+      summaryLabel.textContent = '結果:';
+      card.appendChild(summaryLabel);
+
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      checks.forEach((c, i) => {
+        summary.appendChild(c);
+        if (i < checks.length - 1) summary.appendChild(document.createTextNode('\n'));
+      });
+      card.appendChild(summary);
+
+      // observation 一覧表示
+      const obsLabel = document.createElement('div');
+      obsLabel.className = 'label';
+      obsLabel.style.marginTop = '8px';
+      obsLabel.textContent = `Observations (${analysis.observations.length}):`;
+      card.appendChild(obsLabel);
+      const obsBox = document.createElement('div');
+      obsBox.className = 'musicxml';
+      obsBox.textContent = analysis.observations.length > 0
+        ? analysis.observations.map(o => `[${o.kind}] ${o.message}`).join('\n')
+        : '(no observations)';
+      card.appendChild(obsBox);
+
+      // transitions の voice deltas を表示
+      const txLabel = document.createElement('div');
+      txLabel.className = 'label';
+      txLabel.style.marginTop = '8px';
+      txLabel.textContent = `Transitions (${analysis.transitions.length}):`;
+      card.appendChild(txLabel);
+      const txBox = document.createElement('div');
+      txBox.className = 'musicxml';
+      txBox.textContent = analysis.transitions
+        .map(t => {
+          const deltas = [...t.voiceDeltas.entries()]
+            .map(([label, d]) => `[${label}]${d > 0 ? '+' : ''}${d}`)
+            .join(' ');
+          return `小節 ${t.fromMeasureIndex + 1}→${t.toMeasureIndex + 1}: ${deltas}`;
+        })
+        .join('\n') || '(no transitions)';
+      card.appendChild(txBox);
+
+      root.appendChild(card);
+
+      if (checks.every(c => c.className !== 'fail')) {
+        totalPass++;
+      } else {
+        totalFail++;
+      }
+    }
+
+    // ============================================================
+    // v1.9 Round-trip tests (musicXmlToHide: MusicXML → .hide → MusicXML)
+    // ============================================================
+    // 元 .hide → compileHide → MusicXML(forward) → musicXmlToHide → .hide(reconstructed)
+    //                                          → compileHide → MusicXML(round-trip)
+    // 両方の MusicXML を OSMD で描画して目視で比較する。
+    // 完全な文字列同一性は要求しない (元が stream form でも戻りは grid form なので)。
+    const roundTripCases = [
+      {
+        name: 'R① 4声 grid form (全音符/小節 × 3小節)',
+        // 4/4 で各 cell が 1 小節分 (全音符1個)
+        source:
+          '[1]| C5m | B4m | C5m |\n' +
+          '[2]| G4m | G4m | G4m |\n' +
+          '[3]| E4m | E4m | E4m |\n' +
+          '[4]| C3m | E3m | C3m |',
+      },
+      {
+        name: 'R② 2声 4分音符フル小節 (4/4)',
+        source:
+          '[1]| C5kC5kC5kC5k | D5kD5kD5kD5k |\n' +
+          '[2]| C4jD4jE4jF4jG4jA4jB4jC5j | E4jF4jG4jA4jB4jC5jD5jE5j |',
+      },
+      {
+        name: 'R③ 和音 (C E G whole-note chord)',
+        source: '[1]| C4E4G4m |',
+      },
+      {
+        name: 'R④ ヘッダ保持 (3/4 KEY:2 = D major)',
+        source:
+          '[CLEF:TREBLE TIME:3/4 KEY:2 DIV:32]\n' +
+          '[1]| F#5k C#5k D5k |\n' +
+          '[2]| A4k  A4k  F#4k |',
+      },
+      {
+        name: 'R⑤ Cn (D major で C ナチュラル)',
+        source:
+          '[CLEF:TREBLE TIME:4/4 KEY:2 DIV:32]\n' +
+          '[1]| Cn5k D5k E5k F#5k |',
+      },
+      {
+        name: 'R⑥ 休符を含む 4/4',
+        source:
+          '[1]| C4k Rk C4k Rk |\n' +
+          '[2]| Rk  Rk Rk  Rk |',
+      },
+
+      // ===== v1.9 後期: . 系 small barline vocabulary 互換性 =====
+      {
+        name: 'R⑦ stream form + . 通常小節線 (4/4 × 3 小節)',
+        // grid form の `|` を使わず、`.` だけで小節を区切る (新推奨スタイル)
+        source: '[1] C5m . B4m . C5m .',
+      },
+      {
+        name: 'R⑧ .. 複縦線 (light-light bar)',
+        // 中間に複縦線を入れる
+        source: '[1] C5m . B4m .. C5m .',
+      },
+      {
+        name: 'R⑨ ... 終止線 (final bar)',
+        // 最後の小節を終止線で閉じる
+        source: '[1] C5m . B4m . C5m ...',
+      },
+      {
+        name: 'R⑩ .: ... :. 繰り返し (visual only, MVP は実演奏未展開)',
+        // .: で繰り返し開始、:. で繰り返し終了
+        source: '[1] .: C5m . B4m :.',
+      },
+      {
+        name: 'R⑪ . 不一致検出 (4/4 で 16u しか書いてないのに `.` を打つ)',
+        // 警告が出るはず
+        source: '[1] C5l .',
+      },
+    ];
+
+    const roundTripHeader = document.createElement('h2');
+    roundTripHeader.textContent = 'v1.9 Round-trip tests (musicXmlToHide)';
+    root.appendChild(roundTripHeader);
+
+    for (const tc of roundTripCases) {
+      const card = document.createElement('div');
+      card.className = 'test-case';
+      const checks = [];
+
+      const title = document.createElement('h3');
+      title.textContent = tc.name;
+      card.appendChild(title);
+
+      // 元ソース表示
+      const origLabel = document.createElement('div');
+      origLabel.className = 'label';
+      origLabel.textContent = '元 .hide ソース:';
+      card.appendChild(origLabel);
+      const origBox = document.createElement('div');
+      origBox.className = 'input-source';
+      origBox.textContent = tc.source;
+      card.appendChild(origBox);
+
+      // forward: .hide → MusicXML
+      let forwardXml;
+      try {
+        const r = compileHide(tc.source);
+        forwardXml = r.musicXml;
+        checks.push(pass(`forward compileHide() success (${r.partsCount} parts, ${r.measuresCount} measures)`));
+      } catch (e) {
+        checks.push(fail(`forward compileHide threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks);
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      // reverse: MusicXML → .hide
+      let reconstructedHide, reverseInfo;
+      try {
+        reverseInfo = musicXmlToHide(forwardXml);
+        reconstructedHide = reverseInfo.hideSource;
+        checks.push(pass(`musicXmlToHide() success (${reverseInfo.partsCount} parts, ${reverseInfo.measuresCount} measures)`));
+        if (reverseInfo.warnings.length > 0) {
+          const wn = document.createElement('span');
+          wn.className = 'warning';
+          wn.textContent = `⚠️ ${reverseInfo.warnings.join('; ')}`;
+          checks.push(wn);
+        }
+      } catch (e) {
+        checks.push(fail(`musicXmlToHide threw: ${e.message}`));
+        const summary = document.createElement('div');
+        summary.className = 'summary';
+        summary.append(...checks);
+        card.appendChild(summary);
+        root.appendChild(card);
+        totalFail++;
+        continue;
+      }
+
+      // round-trip: 復元した .hide → MusicXML
+      let roundTripXml;
+      try {
+        const r = compileHide(reconstructedHide);
+        roundTripXml = r.musicXml;
+        checks.push(pass(`round-trip compileHide() success (${r.partsCount} parts, ${r.measuresCount} measures)`));
+      } catch (e) {
+        checks.push(fail(`round-trip compileHide threw: ${e.message}`));
+      }
+
+      // matrix 構造の一致を検証 (両方 analyzeMatrix にかけて partLabels と measureCount を比較)
+      try {
+        const a = analyzeMatrix(tc.source).matrix;
+        const b = analyzeMatrix(reconstructedHide).matrix;
+        if (a.partLabels.length === b.partLabels.length) {
+          checks.push(pass(`partLabels count match (${a.partLabels.length})`));
+        } else {
+          checks.push(fail(`partLabels count: orig=${a.partLabels.length}, round-trip=${b.partLabels.length}`));
+        }
+        if (a.measures.length === b.measures.length) {
+          checks.push(pass(`measure count match (${a.measures.length})`));
+        } else {
+          checks.push(fail(`measure count: orig=${a.measures.length}, round-trip=${b.measures.length}`));
+        }
+      } catch (e) {
+        checks.push(fail(`analyzeMatrix compare threw: ${e.message}`));
+      }
+
+      // 結果表示
+      const summaryLabel = document.createElement('div');
+      summaryLabel.className = 'label';
+      summaryLabel.style.marginTop = '8px';
+      summaryLabel.textContent = '結果:';
+      card.appendChild(summaryLabel);
+      const summary = document.createElement('div');
+      summary.className = 'summary';
+      checks.forEach((c, i) => {
+        summary.appendChild(c);
+        if (i < checks.length - 1) summary.appendChild(document.createTextNode('\n'));
+      });
+      card.appendChild(summary);
+
+      // 復元 .hide ソース表示
+      const reconLabel = document.createElement('div');
+      reconLabel.className = 'label';
+      reconLabel.style.marginTop = '8px';
+      reconLabel.textContent = '復元 .hide ソース (musicXmlToHide 出力):';
+      card.appendChild(reconLabel);
+      const reconBox = document.createElement('div');
+      reconBox.className = 'input-source';
+      reconBox.textContent = reconstructedHide;
+      card.appendChild(reconBox);
+
+      // forward MusicXML プレビュー
+      const fwdXmlLabel = document.createElement('div');
+      fwdXmlLabel.className = 'label';
+      fwdXmlLabel.style.marginTop = '8px';
+      fwdXmlLabel.textContent = `forward MusicXML (${forwardXml.length} chars):`;
+      card.appendChild(fwdXmlLabel);
+      const fwdXmlBox = document.createElement('div');
+      fwdXmlBox.className = 'musicxml';
+      fwdXmlBox.textContent = forwardXml;
+      card.appendChild(fwdXmlBox);
+
+      // OSMD: forward (元 .hide からの MusicXML)
+      const fwdOsmdLabel = document.createElement('div');
+      fwdOsmdLabel.className = 'label';
+      fwdOsmdLabel.style.marginTop = '8px';
+      fwdOsmdLabel.textContent = 'OSMD: forward (元 .hide → MusicXML):';
+      card.appendChild(fwdOsmdLabel);
+      const fwdOsmd = document.createElement('div');
+      fwdOsmd.className = 'osmd-container';
+      card.appendChild(fwdOsmd);
+
+      // OSMD: round-trip (復元 .hide → MusicXML)
+      let rtOsmdLabel, rtOsmd;
+      if (roundTripXml) {
+        rtOsmdLabel = document.createElement('div');
+        rtOsmdLabel.className = 'label';
+        rtOsmdLabel.style.marginTop = '8px';
+        rtOsmdLabel.textContent = 'OSMD: round-trip (復元 .hide → MusicXML):';
+        card.appendChild(rtOsmdLabel);
+        rtOsmd = document.createElement('div');
+        rtOsmd.className = 'osmd-container';
+        card.appendChild(rtOsmd);
+      }
+
+      root.appendChild(card);
+
+      // 描画 (DOM 追加後でないと OSMD が container サイズを取れない)
+      const fwdErr = await renderOsmd(fwdOsmd, forwardXml);
+      if (fwdErr) {
+        const fl = fail(`forward OSMD render failed: ${fwdErr}`);
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(fl);
+      } else {
+        const ok = pass('forward OSMD render success');
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(ok);
+      }
+      if (roundTripXml) {
+        const rtErr = await renderOsmd(rtOsmd, roundTripXml);
+        if (rtErr) {
+          const fl = fail(`round-trip OSMD render failed: ${rtErr}`);
+          summary.appendChild(document.createTextNode('\n'));
+          summary.appendChild(fl);
+        } else {
+          const ok = pass('round-trip OSMD render success');
+          summary.appendChild(document.createTextNode('\n'));
+          summary.appendChild(ok);
+        }
+      }
+
+      if (checks.every(c => c.className !== 'fail') &&
+          summary.querySelectorAll('.fail').length === 0) {
+        totalPass++;
+      } else {
+        totalFail++;
+      }
+    }
+
+    const totalCard = document.createElement('div');
+    totalCard.className = 'test-case';
+    totalCard.innerHTML = `<h2>合計: ${totalPass} PASS / ${totalFail} FAIL</h2>`;
+    root.appendChild(totalCard);
+  </script>
+</body>
+</html>

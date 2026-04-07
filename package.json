@@ -1,0 +1,51 @@
+{
+  "name": "hide-lang",
+  "version": "0.2.0",
+  "description": ".hide — A compact symbolic music notation language designed for LLM-era multi-voice generation, analysis, and OMR.",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -p tsconfig.build.json && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "music-notation",
+    "musicxml",
+    "symbolic-music",
+    "compact-notation",
+    "llm",
+    "omr",
+    "acapella",
+    "hamoren"
+  ],
+  "author": "hide-sora",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hide-sora/.hide"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "opensheetmusicdisplay": "^1.8.7",
+    "typescript": "^5.4.5",
+    "vite": "^5.2.0",
+    "vitest": "^1.6.0"
+  }
+}
