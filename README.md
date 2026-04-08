@@ -544,6 +544,112 @@ This hybrid is feasible *because* `.hide` is small enough that the LLM does not 
 
 We claim this **OMR-validated-by-compilation hybrid** as a system-level contribution — not the OMR techniques themselves (which are largely standard), but the *specific use of a compact notation language as a feedback-loop OMR target*.
 
+### 6.4 Reference pipeline: PDF → `.hide` consumer wiring
+
+The reference implementation exposes the hybrid as four composable phases. Each phase is pure (no network, no side effects); the consumer owns LLM calls and retry policy. A minimal end-to-end wiring looks like this:
+
+```ts
+import {
+  buildPdfHideMetaPrompt, applyPdfHideMetaResponse,            // Phase 1
+  extractPageLayout,                                            // Phase 2a
+  detectNoteheadsInCell,                                        // Phase 2b
+  assemblePdfHide,                                              // Phase 3
+  buildPdfHideLlmFallbackPrompt, applyPdfHideLlmFallbackResponse, // Phase 4
+} from 'hide-lang';
+import type {
+  PdfHideImage, CellBox, NoteheadDetectionResult, PdfHideClefName,
+} from 'hide-lang';
+
+async function pdfToHide(
+  pageImages: PdfHideImage[],                                         // pure-TS ImageData
+  pageBase64: { base64: string; mediaType: 'image/png'; pageNumber: number }[],
+  anthropic: AnthropicClient,
+) {
+  // ===== Phase 1 — LLM whole-piece structure (1 call, all pages) =====
+  const metaPrompt = buildPdfHideMetaPrompt({ pageImages: pageBase64 });
+  const metaResp = await anthropic.messages.create({
+    model: 'claude-opus-4-6', max_tokens: 4096,
+    system: metaPrompt.systemPrompt,
+    messages: [{ role: 'user', content: metaPrompt.userContent }],
+  });
+  const meta = applyPdfHideMetaResponse({ llmResponse: metaResp.content[0].text });
+  if (!meta.context) throw new Error(meta.parseError);
+  const context = meta.context;
+
+  // ===== Phase 2a — classical OMR layout (staff/system/cell geometry) =====
+  const pageLayouts = extractPageLayout({ pageImages, context });
+
+  // ===== Phase 2b — notehead detection per cell (Bravura template match) =====
+  const noteheadsByCell = new Map<CellBox, NoteheadDetectionResult>();
+  for (const pl of pageLayouts) {
+    for (const sys of pl.systems) {
+      for (const cell of sys.cells) {
+        const staff = sys.staves[cell.staffIndex];
+        const clef = context.clefsPerStaff[cell.staffIndex] as PdfHideClefName;
+        noteheadsByCell.set(cell, detectNoteheadsInCell({
+          pageImage: pageImages[pl.pageIndex],
+          cell, staffBand: staff, clef,
+          keyFifths: context.initialKeyFifths,
+        }));
+      }
+    }
+  }
+
+  // ===== Phase 3 — assemble draft + confidence flagging (no silent fill) =====
+  const draft = assemblePdfHide({ context, pageLayouts, noteheadsByCell });
+  if (draft.lowConfidenceCells.length === 0) {
+    return { hideSource: draft.hideSource, diagnostics: draft.diagnostics };
+  }
+
+  // ===== Phase 4 — LLM fallback, per page in parallel (low-confidence cells only) =====
+  const byPage = new Map<number, typeof draft.lowConfidenceCells>();
+  for (const c of draft.lowConfidenceCells) {
+    let arr = byPage.get(c.pageIndex);
+    if (!arr) { arr = []; byPage.set(c.pageIndex, arr); }
+    arr.push(c);
+  }
+  const fallbacks = await Promise.all([...byPage.entries()].map(async ([pageIdx, cells]) => {
+    const cellRefs = cells.map(c => ({
+      cellId: `p${c.pageIndex}s${c.systemIndex}i${c.staffIndex}m${c.measureIndex}`,
+      partLabel: c.partLabel,
+      globalMeasureIndex: c.globalMeasureIndex,
+      confidence: (c.confidence === 'high' ? 'mid' : c.confidence) as 'mid' | 'low' | 'unknown',
+    }));
+    const prompt = buildPdfHideLlmFallbackPrompt({
+      pageImage: pageBase64[pageIdx],
+      draftHideSourceForPage: draft.hideSource, // multi-page: slice lines whose cellId contains `p${pageIdx}s`
+      lowConfidenceCells: cellRefs,
+      context: {
+        clef: context.clefsPerStaff[0],
+        timeSignature: context.initialTimeSignature,
+        keyFifths: context.initialKeyFifths,
+      },
+    });
+    const resp = await anthropic.messages.create({
+      model: 'claude-opus-4-6', max_tokens: 4096,
+      system: prompt.systemPrompt,
+      messages: [{ role: 'user', content: prompt.userContent }],
+    });
+    return applyPdfHideLlmFallbackResponse({
+      llmResponse: resp.content[0].text,
+      expectedCellIds: cellRefs.map(c => c.cellId),
+    });
+  }));
+
+  // Consumer merges fallbacks[].cellOverrides back into draft.hideSource by matching
+  // `;<status>:<cellId>` markers. Cells with `stillUncertain === true` and any
+  // `fallbacks[].unresolved` item stay as diagnostics in the editor — never a silent fill.
+  return { draft, fallbacks };
+}
+```
+
+Four design properties follow from this shape:
+
+- **Adaptive cost.** Phase 1 is one LLM call regardless of page count. Phase 4 is zero calls when classical OMR already hit 100% confidence, and otherwise scales with the number of low-confidence *cells*, not pages. A clean engraved PDF typically settles at one LLM call total; a noisy scan with dense chords adds a per-page fallback call only for pages that actually need it. For reference, the target envelope is ≈ $0.56 – 0.68 per 4-voice a-cappella piece, versus ≈ $1.4 – 2.5 if every page were routed through a vision LLM (the all-LLM baseline, "Plan D").
+- **Silent-fill-free guarantee.** Phase 3 never writes a note it did not detect; it emits a `;unknown:<cellId>` rest placeholder and a structured `PdfHideDiagnostic`. Phase 4 preserves the contract: if the LLM still cannot commit, the cell comes back as `stillUncertain` or in `unresolved`, and the editor surfaces it for a human. At no stage does the pipeline promote guesses to "final".
+- **cellId as the merge key.** The string `p{page}s{system}i{staff}m{measure}` is deterministic from layout and is what both phases (assemble and fallback) carry as their contract. Consumers merge overrides by matching that marker at end-of-line, so the merge is line-local and order-independent.
+- **Pure phases, consumer-owned I/O.** No phase imports a network client or filesystem. LLM calls, retries, timeouts, rate limiting, caching, and the Phase 4 per-page parallelism all live in the consumer. This is what lets the same primitives drive the Hamoren web UI, a CLI, and a unit test that replays a captured LLM transcript.
+
 ---
 
 ## 7. Use cases and reference implementation
