@@ -16,6 +16,8 @@
  *   startReviewLoop(input)             → 多ラウンド LLM レビュー state machine の初期化
  *   continueReviewLoop(state, response) → state machine を 1 ラウンド進める
  *   runReviewLoop(input)               → callLlm callback でループを最後まで回す async wrapper
+ *   buildHamoringSuggestPrompt(input)  → 現状 .hide + task → ハモリ提案 LLM プロンプト
+ *   applyHamoringSuggestResponse(in)   → ハモリ提案 LLM 応答 → primary + 代替案 + task check
  *   tokenize(source)                   → 生トークン列 (低レベル)
  *   parse(lex)                         → AST (低レベル)
  *   expand(ast)                        → パート分離・反復展開済み AST
@@ -130,6 +132,20 @@ export type {
   HamoringSuggestSummary,
   HamoringPieceContext,
 } from './hideHamoringSuggest';
+
+// v1.9 ハモリ提案 apply layer (LLM 応答テキスト → primary + 代替案の
+// ```hide``` フェンス抽出 + 再検証 + chord/VL 再計算 + 元との差分計算 +
+// 任意 task-aware soft contract check)
+export { applyHamoringSuggestResponse } from './hideHamoringSuggestApply';
+export type {
+  HamoringSuggestApplyInput,
+  HamoringSuggestApplyResult,
+  HamoringSuggestProposalValidation,
+  HamoringSuggestDelta,
+  HamoringSuggestChangedPart,
+  HamoringAlternateProposal,
+  HamoringSuggestTaskCheck,
+} from './hideHamoringSuggestApply';
 
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
 export { tokenize } from './hideLexer';
