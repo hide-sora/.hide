@@ -10,6 +10,8 @@
  *   classifyMatrixMeasures(matrix)     → 各小節の ChordLabel 配列
  *   analyzeVoiceLeading(matrix)        → 声部進行 caution observation (descriptive、禁則ではない)
  *   musicXmlToHide(xml, opts)          → MusicXML → .hide 逆変換 + 構造化 diagnostics
+ *   buildHamoringSuggestPrompt(input)  → 現状 .hide + task → ハモリ提案 LLM プロンプト
+ *   applyHamoringSuggestResponse(in)   → ハモリ提案 LLM 応答 → primary + 代替案 + task check
  *
  *   === v1.10 PDF→.hide pipeline (Audiveris OMR + musicXmlToHide) ===
  *   pdfToHide(pdfData, opts)             → PDF → Audiveris → MusicXML → .hide
@@ -215,6 +217,18 @@ export type {
   HamoringSuggestSummary,
   HamoringPieceContext,
 } from './hideHamoringSuggest';
+
+// v1.9 ハモリ提案 apply layer
+export { applyHamoringSuggestResponse } from './hideHamoringSuggestApply';
+export type {
+  HamoringSuggestApplyInput,
+  HamoringSuggestApplyResult,
+  HamoringSuggestProposalValidation,
+  HamoringSuggestDelta,
+  HamoringSuggestChangedPart,
+  HamoringAlternateProposal,
+  HamoringSuggestTaskCheck,
+} from './hideHamoringSuggestApply';
 
 // ============================================================
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
