@@ -117,6 +117,20 @@ export type {
 // follow-up context type は prompt builder にあるが loop 層が使うので一緒に export
 export type { LlmReviewFollowupContext } from './hideLlmReview';
 
+// v1.9 ハモリ提案 LLM プロンプト構築層 (matrix mode の生成タスク向け consumer)
+// (現状 .hide + task → "次の一手" を提案させるための prompt builder。
+//  hideLlmReview とは正反対の前提: silent fill OK / ポップ・現代アカペラ /
+//  古典和声の禁則は適用しない / 画像は使わない)
+export { buildHamoringSuggestPrompt } from './hideHamoringSuggest';
+export type {
+  HamoringSuggestPrompt,
+  HamoringSuggestInput,
+  HamoringSuggestTask,
+  HamoringContentBlock,
+  HamoringSuggestSummary,
+  HamoringPieceContext,
+} from './hideHamoringSuggest';
+
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
 export { tokenize } from './hideLexer';
 export type { HideLexResult, HideRawToken, HideBarlineRawToken } from './hideLexer';
