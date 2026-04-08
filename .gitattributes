@@ -1,0 +1,15 @@
+# .hide source files are byte-stable round-trip artifacts (musicXmlToHide
+# writes them with LF, and src/bachCorpus.test.ts asserts byte-equality).
+# Force LF on all platforms so Windows autocrlf does not break the test.
+*.hide text eol=lf
+
+# MusicXML corpus files are committed verbatim from music21 and must
+# survive Windows checkout untouched.
+*.xml text eol=lf
+
+# TypeScript / JS / JSON sources should also be LF for consistency
+# (the rest of the repo is already LF).
+*.ts text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.md text eol=lf

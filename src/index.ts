@@ -205,6 +205,17 @@ export type { PdfToImagesOptions, PdfToImagesResult } from './pdfToImages';
 export { createClaudeCaller } from './pdfHideLlm';
 export type { CallLlmFn, CallLlmInput, PdfHideLlmOptions } from './pdfHideLlm';
 
+// v1.9 ハモリ提案 LLM プロンプト構築層 (matrix mode の生成タスク向け consumer)
+export { buildHamoringSuggestPrompt } from './hideHamoringSuggest';
+export type {
+  HamoringSuggestPrompt,
+  HamoringSuggestInput,
+  HamoringSuggestTask,
+  HamoringContentBlock,
+  HamoringSuggestSummary,
+  HamoringPieceContext,
+} from './hideHamoringSuggest';
+
 // ============================================================
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
 // ============================================================
