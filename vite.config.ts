@@ -22,6 +22,9 @@ export default defineConfig({
     },
     sourcemap: true,
     minify: false,
+    // tsc が先に dist/ に *.d.ts を出力するため、Vite には dist/ を空にしないよう指示する
+    // (デフォルトの emptyOutDir=true だと .d.ts が消えて consumer 側の型解決が失敗する)
+    emptyOutDir: false,
     rollupOptions: {
       external: [],
     },

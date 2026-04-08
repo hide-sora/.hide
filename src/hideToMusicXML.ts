@@ -724,10 +724,20 @@ function unitsToNoteType(units: number): string {
 function clefToMusicXml(clef: HideClef): { sign: string; line: number } {
   switch (clef) {
     case 'TREBLE': return { sign: 'G', line: 2 };
+    // TREBLE_8VA / TREBLE_8VB は譜面上の sign/line は G line 2 と同じ。
+    // 実音の octave シフト (clef-octave-change: +1 / -1) はこの関数の返り値型には
+    // 含めていない (スキーマ拡張は将来課題)。
+    case 'TREBLE_8VA': return { sign: 'G', line: 2 };
+    case 'TREBLE_8VB': return { sign: 'G', line: 2 };
     case 'BASS': return { sign: 'F', line: 4 };
     case 'ALTO': return { sign: 'C', line: 3 };
     case 'TENOR': return { sign: 'C', line: 4 };
     case 'PERCUSSION': return { sign: 'percussion', line: 2 };
+    default: {
+      // exhaustiveness check: HideClef に新値を追加したらここが型エラーになる
+      const _exhaustive: never = clef;
+      throw new Error(`unhandled clef: ${String(_exhaustive)}`);
+    }
   }
 }
 

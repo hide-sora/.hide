@@ -2,26 +2,36 @@
  * .hide language — main entry point.
  *
  * 公開 API:
- *   compileHide(source, opts)         → MusicXML 文字列 + warnings   (stream mode, v1.8)
- *   analyzeMatrix(source)              → grid-aligned matrix         (matrix mode, v1.9)
+ *   compileHide(source, opts)          → MusicXML 文字列 + warnings   (stream mode, v1.8)
+ *   analyzeMatrix(source)              → grid-aligned matrix          (matrix mode, v1.9)
  *   iterateMeasures(matrix)            → 時間整列した小節イテレータ
  *   measureToChord(matrix, measure)    → ある時刻の全鳴音 (HidePitch[])
  *   classifyChord(pitches)             → triad/seventh コード分類
  *   classifyMatrixMeasures(matrix)     → 各小節の ChordLabel 配列
  *   analyzeVoiceLeading(matrix)        → 声部進行 caution observation (descriptive、禁則ではない)
  *   musicXmlToHide(xml, opts)          → MusicXML → .hide 逆変換 + 構造化 diagnostics
- *   buildLlmReviewPrompt(input)        → 診断 + 画像 + hideSource を LLM プロンプトに組み立て
- *   buildLlmReviewPromptFromResult(r)  → musicXmlToHide の結果からワンステップで prompt
- *   applyLlmReviewResponse(input)      → LLM 応答から修正済み .hide を抽出 + 再検証 + 差分計算
- *   startReviewLoop(input)             → 多ラウンド LLM レビュー state machine の初期化
- *   continueReviewLoop(state, response) → state machine を 1 ラウンド進める
- *   runReviewLoop(input)               → callLlm callback でループを最後まで回す async wrapper
- *   tokenize(source)                   → 生トークン列 (低レベル)
- *   parse(lex)                         → AST (低レベル)
- *   expand(ast)                        → パート分離・反復展開済み AST
- *   astToMusicXML(ast, opts)           → MusicXML (中レベル)
  *
- * 詳細仕様は README.md (priority paper v1.8 + v1.9) を参照。
+ *   === v1.10 PDF→.hide pipeline (Plan H: 適材適所 hybrid + 100% 優先) ===
+ *   Phase 1 (LLM 全曲構造解析):
+ *     buildPdfHideMetaPrompt(input)    → LLM 用 multimodal prompt
+ *     applyPdfHideMetaResponse(input)  → LLM 応答 → PdfHideScoreContext
+ *   Phase 2a (古典 OMR レイアウト検出):
+ *     extractPageLayout(input)         → PageLayout[] (staff/system/cell 幾何)
+ *   Phase 2b (古典 OMR notehead 検出):
+ *     detectNoteheadsInCell(input)     → Notehead[] + confidence
+ *   Phase 3 (assembly + diagnostic emit):
+ *     assemblePdfHide(input)           → .hide ソース + diagnostics + lowConfidenceCells
+ *   Phase 4 (LLM 低信頼セル補完):
+ *     buildPdfHideLlmFallbackPrompt(input)   → LLM 用 multimodal prompt
+ *     applyPdfHideLlmFallbackResponse(input) → LLM 応答 → cell overrides + unresolved
+ *
+ *   === 低レベル API ===
+ *   tokenize(source)                   → 生トークン列
+ *   parse(lex)                         → AST
+ *   expand(ast)                        → パート分離・反復展開済み AST
+ *   astToMusicXML(ast, opts)           → MusicXML
+ *
+ * 詳細仕様は README.md (priority paper v1.8 + v1.9 + v1.10) を参照。
  */
 
 export { compileHide, isHideFileName, HideParseError } from './hideLoader';
@@ -70,54 +80,113 @@ export type {
   MusicXmlToHideDiagnostic,
 } from './musicXmlToHide';
 
-// v1.9 LLM レビュー pipeline 用プロンプト構築層
-// (診断 + 画像 + hideSource を 1 つの multimodal prompt に組み立てる)
+// ============================================================
+// v1.10 PDF→.hide pipeline (Plan H: 適材適所 hybrid + 100% 優先)
+// ============================================================
+
+// 画像基盤 (pure TS, 依存ゼロ. DOM ImageData と構造的互換)
 export {
-  buildLlmReviewPrompt,
-  buildLlmReviewPromptFromResult,
-} from './hideLlmReview';
+  toGrayscale,
+  binarize,
+  horizontalProjection,
+  verticalProjectionBand,
+  cropImage,
+  connectedComponents,
+} from './pdfHideImage';
 export type {
-  LlmReviewPrompt,
-  LlmReviewInput,
-  LlmReviewImage,
-  LlmReviewContentBlock,
-  LlmReviewSummary,
-  LlmReviewPieceContext,
-} from './hideLlmReview';
+  PdfHideImage,
+  Box,
+  Component,
+} from './pdfHideImage';
 
-// v1.9 LLM レビュー pipeline 用 apply layer
-// (LLM 応答テキスト → 修正済み .hide ソース抽出 + 再検証 + 差分計算)
-export { applyLlmReviewResponse } from './hideLlmReviewApply';
-export type {
-  LlmReviewApplyInput,
-  LlmReviewApplyResult,
-  LlmReviewUnresolvedItem,
-  LlmReviewValidation,
-  LlmReviewDelta,
-  LlmReviewChangedPart,
-} from './hideLlmReviewApply';
-
-// v1.9 LLM レビュー pipeline 用ループ層 (multi-round state machine + callback wrapper)
-// (1 ラウンドで収束しない場合の反復戦略 + 終了判定)
+// Phase 1: LLM Vision 全曲構造解析 (タイトル/編成/拍子/調/全小節数/歌詞 等)
 export {
-  startReviewLoop,
-  continueReviewLoop,
-  runReviewLoop,
-  DEFAULT_MAX_ROUNDS,
-} from './hideLlmReviewLoop';
+  buildPdfHideMetaPrompt,
+  applyPdfHideMetaResponse,
+} from './pdfHideMeta';
 export type {
-  LlmReviewLoopInput,
-  LlmReviewLoopRound,
-  LlmReviewLoopState,
-  LlmReviewLoopTermination,
-  LlmReviewLoopFinalResult,
-  RunReviewLoopInput,
-} from './hideLlmReviewLoop';
+  PdfHideMetaImage,
+  PdfHideMetaContentBlock,
+  PdfHideMetaPieceHint,
+  PdfHideMetaInput,
+  PdfHideMetaSummary,
+  PdfHideMetaPrompt,
+  PdfHideMetaApplyInput,
+  PdfHideMetaApplyResult,
+  PdfHideScoreContext,
+  PdfHideStaffRole,
+  PdfHideClefName,
+  PdfHideTimeSignature,
+  PdfHideKeyChange,
+  PdfHideTimeChange,
+  PdfHideRepeatSpan,
+  PdfHideTempoMark,
+  PdfHideRehearsalMark,
+  PdfHideSectionLabel,
+  PdfHideChordSymbol,
+  PdfHideLyricRow,
+  PdfHideLyrics,
+} from './pdfHideMeta';
 
-// follow-up context type は prompt builder にあるが loop 層が使うので一緒に export
-export type { LlmReviewFollowupContext } from './hideLlmReview';
+// Phase 2a: 古典 OMR レイアウト検出 (staff/system/cell 幾何)
+export { extractPageLayout } from './pdfHideLayout';
+export type {
+  StaffBand,
+  SystemLayout,
+  CellBox,
+  LayoutWarning,
+  PageLayout,
+  ExtractLayoutInput,
+  PdfHideLayoutOptions,
+} from './pdfHideLayout';
 
+// Phase 2b: 古典 OMR notehead 検出 (SMuFL/Bravura テンプレマッチ + confidence)
+export { detectNoteheadsInCell } from './pdfHideNotehead';
+export type {
+  NoteheadKind,
+  StemDirection,
+  PitchLetter,
+  Notehead,
+  NoteheadWarning,
+  NoteheadDetectionInput,
+  NoteheadDetectionOptions,
+  NoteheadDetectionResult,
+} from './pdfHideNotehead';
+
+// Phase 3: assembly + diagnostic emit (silent fill 禁止)
+export { assemblePdfHide } from './pdfHideAssemble';
+export type {
+  CellConfidence,
+  PdfHideDiagnostic,
+  PdfHideCellConfidenceEntry,
+  PdfHideLowConfidenceCellId,
+  AssemblePdfHideInput,
+  AssemblePdfHideOptions,
+  PdfHideAssembleResult,
+} from './pdfHideAssemble';
+
+// Phase 4: LLM 低信頼セル補完 (通常フローの一部、低信頼セルがあれば走らせる)
+export {
+  buildPdfHideLlmFallbackPrompt,
+  applyPdfHideLlmFallbackResponse,
+} from './pdfHideLlmFallback';
+export type {
+  PdfHideFallbackImage,
+  PdfHideFallbackContentBlock,
+  PdfHideFallbackContext,
+  PdfHideLowConfidenceCellRef,
+  PdfHideLlmFallbackInput,
+  PdfHideLlmFallbackSummary,
+  PdfHideLlmFallbackPrompt,
+  PdfHideLlmFallbackApplyInput,
+  PdfHideFallbackCellOverride,
+  PdfHideFallbackUnresolvedItem,
+  PdfHideLlmFallbackApplyResult,
+} from './pdfHideLlmFallback';
+
+// ============================================================
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
+// ============================================================
 export { tokenize } from './hideLexer';
 export type { HideLexResult, HideRawToken, HideBarlineRawToken } from './hideLexer';
 export { parse } from './hideParser';

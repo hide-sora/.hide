@@ -23,6 +23,7 @@ import {
   LENGTH_ALIAS_TO_UNITS,
   NOTE_STEP_NORMALIZE,
   HIDE_HEADER_DEFAULT,
+  createDefaultHeader,
   getLengthUnits,
 } from './hideTypes';
 import { HideParseError, offsetToPosition } from './hideErrors';
@@ -136,7 +137,7 @@ export function tokenize(source: string): HideLexResult {
   i = skipWhitespaceAndComments(source, i);
 
   // 1. ヘッダー [...] (v1.8: 完全省略可。先頭が [ で始まる場合のみヘッダーとして解釈)
-  let header: HideHeader = { ...HIDE_HEADER_DEFAULT };
+  let header: HideHeader = createDefaultHeader();
   if (source[i] === '[') {
     const headerEnd = source.indexOf(']', i);
     if (headerEnd < 0) {
@@ -463,11 +464,11 @@ function parseHeader(
   pos: HideSourcePosition,
   source: string,
 ): HideHeader {
-  const result: HideHeader = { ...HIDE_HEADER_DEFAULT };
+  const result: HideHeader = createDefaultHeader();
   const trimmed = inner.trim();
   if (trimmed.length === 0) return result; // [] → 全部デフォルト
 
-  // 長形式 (CLEF:..., TIME:..., KEY:..., DIV:...) と短縮形を共存させる。
+  // 長形式 (CLEF:..., TIME:..., KEY:..., DIV:..., CLEFS:...) と短縮形を共存させる。
   // まず ':' を含むトークンを長形式として処理し、残りを短縮形パーサで処理。
   const parts = trimmed.split(/\s+/).filter(Boolean);
   const shortFormParts: string[] = [];
@@ -585,22 +586,77 @@ function parseShortFormHeader(
 }
 
 function parseClefName(name: string, pos: HideSourcePosition, source: string): HideClef {
-  const upper = name.toUpperCase();
-  if (upper === 'TREBLE' || upper === 'BASS' || upper === 'ALTO' ||
-      upper === 'TENOR' || upper === 'PERCUSSION') {
+  // 長形式 (CLEF:TREBLE, CLEF:TREBLE_8VA, CLEF:TREBLE_8VB, CLEF:BASS, ...) を受け付ける。
+  // 値の表記は大文字小文字を区別せず、'-' / 空白は '_' に正規化する。
+  const upper = name.toUpperCase().replace(/[-\s]/g, '_');
+  if (upper === 'TREBLE' || upper === 'BASS' || upper === 'TREBLE_8VA' || upper === 'TREBLE_8VB' ||
+      upper === 'ALTO' || upper === 'TENOR' || upper === 'PERCUSSION') {
     return upper as HideClef;
   }
   throw new HideParseError(`未知の譜表記号: CLEF:${name}`, pos, source);
+}
+
+/**
+ * 短縮 vocabulary または長形式名のいずれかを HideClef に変換する。
+ *  T   / TREBLE        → TREBLE      (ト音記号)
+ *  B   / BASS          → BASS        (ヘ音記号)
+ *  T8  / TREBLE_8VA    → TREBLE_8VA  (ト音記号 8va, 実音 1 オクターブ上)
+ *  T-8 / TREBLE_8VB    → TREBLE_8VB  (ト音記号 8va bassa, 実音 1 オクターブ下 — テナー頻用)
+ *  A   / AL / ALTO     → ALTO
+ *  Te  / TENOR         → TENOR
+ *  Pe  / N / PERCUSSION → PERCUSSION
+ */
+function parseClefShortOrLong(s: string, pos: HideSourcePosition, source: string): HideClef {
+  const trimmed = s.trim();
+  if (trimmed.length === 0) {
+    throw new HideParseError('譜表記号が空です', pos, source);
+  }
+  // 短縮形 (case-insensitive)
+  const upper = trimmed.toUpperCase();
+  if (upper === 'T' || upper === 'TREBLE') return 'TREBLE';
+  if (upper === 'B' || upper === 'BASS') return 'BASS';
+  if (upper === 'T8' || upper === 'TREBLE_8VA' || upper === 'TREBLE-8VA' || upper === 'TREBLE8VA') return 'TREBLE_8VA';
+  if (upper === 'T-8' || upper === 'TREBLE_8VB' || upper === 'TREBLE-8VB' || upper === 'TREBLE8VB') return 'TREBLE_8VB';
+  if (upper === 'A' || upper === 'AL' || upper === 'ALTO') return 'ALTO';
+  if (upper === 'TE' || upper === 'TENOR') return 'TENOR';
+  if (upper === 'PE' || upper === 'N' || upper === 'PERCUSSION') return 'PERCUSSION';
+  throw new HideParseError(`未知の譜表記号: ${s}`, pos, source);
 }
 
 function abbreviationToClef(s: string): HideClef {
   const upper = s.toUpperCase();
   if (upper === 'TREBLE' || upper === 'T') return 'TREBLE';
   if (upper === 'BASS' || upper === 'B') return 'BASS';
+  if (upper === 'TREBLE8' || upper === 'T8') return 'TREBLE_8VA';
+  if (upper === 'TREBLE-8' || upper === 'T-8') return 'TREBLE_8VB';
   if (upper === 'ALTO' || upper === 'AL' || upper === 'A') return 'ALTO';
   if (upper === 'TENOR' || upper === 'TE') return 'TENOR';
   if (upper === 'PERCUSSION' || upper === 'PE' || upper === 'N') return 'PERCUSSION';
   return 'TREBLE';
+}
+
+/**
+ * インラインメタコマンド用の厳格な譜表 vocabulary パーサ。
+ * 成功したら HideClef を返し、失敗したら null を返す (throw しない)。
+ *
+ *   T    → TREBLE
+ *   B    → BASS
+ *   T8   → TREBLE_8VA (ト音記号 8va, オクターブ上)
+ *   T-8  → TREBLE_8VB (ト音記号 8va bassa, オクターブ下)
+ *
+ * `parseMetaCommand` の中で `[T]`/`[1T8]` などを試験的に判定する用途。
+ * tempo/partSwitch など他の解釈と競合する可能性があるので throw しない。
+ *
+ * 注意: ここでは「インラインで頻用する短縮語彙」だけを受け付ける。長形式
+ * (`CLEF:TREBLE_8VA`) は parseClefName() で別途扱う。
+ */
+function tryParseBareClef(s: string): HideClef | null {
+  const upper = s.trim().toUpperCase();
+  if (upper === 'T') return 'TREBLE';
+  if (upper === 'B') return 'BASS';
+  if (upper === 'T8') return 'TREBLE_8VA';
+  if (upper === 'T-8') return 'TREBLE_8VB';
+  return null;
 }
 
 function parseKeyLetter(value: string, pos: HideSourcePosition, source: string): number {
@@ -641,9 +697,43 @@ function parseMetaCommand(
 ): HideMetaToken {
   if (!inner) throw new HideParseError('空のメタコマンド []', pos, source);
 
+  // 先に bare な譜表指定 (clefChange) を判定。
+  //   [T]   → TREBLE
+  //   [B]   → BASS
+  //   [T8]  → TREBLE_8VA (ト音記号 8va, オクターブ上)
+  //   [T-8] → TREBLE_8VB (ト音記号 8va bassa, オクターブ下 — テナー頻用)
+  //
+  // これを tempo/key 判定より先に置くことで [T] / [T8] / [T-8] が clefChange として
+  // 解釈される。[T120] のような「T + 数字」は後続の tempo 判定に落ちる。
+  {
+    const clefOnly = tryParseBareClef(inner);
+    if (clefOnly !== null) {
+      return { kind: 'meta', type: 'clefChange', clef: clefOnly };
+    }
+  }
+
+  // 数字+譜表 の partSwitch+clef: [1T] [2B] [3T8] [4T-8] など
+  //   先頭が数字で、残りが譜表 vocabulary として解釈できれば OK
+  {
+    const m = inner.match(/^(\d+)(.+)$/);
+    if (m) {
+      const labelPart = m[1];
+      const clefPart = m[2];
+      const clefOnly = tryParseBareClef(clefPart);
+      if (clefOnly !== null) {
+        return {
+          kind: 'meta',
+          type: 'partSwitch',
+          partLabel: labelPart,
+          clef: clefOnly,
+        };
+      }
+    }
+  }
+
   const head = inner[0];
 
-  // [T120] tempo  (note: [T] 単独は v1.9 で削除済み — SATB legacy 廃止に合わせて)
+  // [T120] tempo  (note: [T] 単独は clefChange として上で処理済み)
   if (head === 'T') {
     if (/^\d/.test(inner.slice(1))) {
       const bpm = parseFloat(inner.slice(1));
