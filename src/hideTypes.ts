@@ -109,6 +109,7 @@ export interface HideNoteToken {
   staccato: boolean;           // 大文字長さ (K/L/M等)
   slurStart: boolean;          // 小文字音名 (a-g)
   tieToNext: boolean;          // 直後に '+' があった
+  tieFromPrev?: boolean;       // 自動タイ分割で前小節から繋がっている
   lyric?: string;              // 直後の歌詞文字列
   tupletMember?: HideTupletMemberInfo;
 }

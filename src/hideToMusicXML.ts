@@ -467,15 +467,59 @@ function bucketize(
     // note / rest
     const dur = getEmittedDuration(tok, tupletScale);
     let bucket = measures[measures.length - 1];
-    if (bucket.totalUnits + dur > bucket.unitsPerMeasure) {
-      if (bucket.totalUnits > 0) {
-        bucket = startNewBucket(false);
+    const remaining = bucket.unitsPerMeasure - bucket.totalUnits;
+
+    if (dur > remaining && remaining > 0 && dur > bucket.unitsPerMeasure) {
+      // 小節を跨ぐ長い音符/休符 → 自動タイ分割
+      warnings.push(
+        `パート ${partLabel}: 音価 ${dur}u が小節残り ${remaining}u を超過 (拍子 ${currentTimeNum}/${currentTimeDen} = ${bucket.unitsPerMeasure}u)。自動タイ分割します。`,
+      );
+      let leftover = dur;
+      let isFirst = true;
+      while (leftover > 0) {
+        bucket = measures[measures.length - 1];
+        const space = bucket.unitsPerMeasure - bucket.totalUnits;
+        const chunk = Math.min(leftover, space);
+        const isLast = leftover - chunk <= 0;
+        if (tok.kind === 'note') {
+          const part: HideNoteToken = {
+            ...tok,
+            durationUnits: Math.round(chunk / tupletScale),
+            dots: 0,
+            tieToNext: isLast ? tok.tieToNext : true,
+            tieFromPrev: !isFirst,
+          };
+          bucket.tokens.push(part);
+        } else {
+          const part: HideRestToken = {
+            ...tok,
+            durationUnits: Math.round(chunk / tupletScale),
+            dots: 0,
+          };
+          bucket.tokens.push(part);
+        }
+        bucket.totalUnits += chunk;
+        leftover -= chunk;
+        isFirst = false;
+        if (bucket.totalUnits >= bucket.unitsPerMeasure && leftover > 0) {
+          startNewBucket(false);
+        }
       }
-    }
-    bucket.tokens.push(tok);
-    bucket.totalUnits += dur;
-    if (bucket.totalUnits >= bucket.unitsPerMeasure) {
-      startNewBucket(false);
+      if (bucket.totalUnits >= bucket.unitsPerMeasure) {
+        startNewBucket(false);
+      }
+    } else {
+      // 通常パス: 小節内に収まる
+      if (bucket.totalUnits + dur > bucket.unitsPerMeasure) {
+        if (bucket.totalUnits > 0) {
+          bucket = startNewBucket(false);
+        }
+      }
+      bucket.tokens.push(tok);
+      bucket.totalUnits += dur;
+      if (bucket.totalUnits >= bucket.unitsPerMeasure) {
+        startNewBucket(false);
+      }
     }
   }
   // 末尾の空 bucket を削る (1個だけは残す)
@@ -600,18 +644,24 @@ function emitNote(
       if (accName) out.push(`        <accidental>${accName}</accidental>`);
     }
 
-    // タイ start (chord 2つ目以降は省略)
+    // タイ stop/start (chord 2つ目以降は省略)
     const isFirstChordNote = i === 0;
+    if (tok.tieFromPrev && isFirstChordNote) {
+      out.push('        <tie type="stop"/>');
+    }
     if (tok.tieToNext && isFirstChordNote) {
       out.push('        <tie type="start"/>');
     }
 
     const wantNotations = isFirstChordNote && (
-      tok.staccato || tok.slurStart || tok.tieToNext ||
+      tok.staccato || tok.slurStart || tok.tieToNext || tok.tieFromPrev ||
       tupletStartStop.start || tupletStartStop.stop
     );
     if (wantNotations) {
       out.push('        <notations>');
+      if (tok.tieFromPrev) {
+        out.push('          <tied type="stop"/>');
+      }
       if (tok.tieToNext) {
         out.push('          <tied type="start"/>');
       }
