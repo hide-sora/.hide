@@ -185,6 +185,21 @@ export type {
 } from './pdfHideLlmFallback';
 
 // ============================================================
+// End-to-end PDF→.hide (Phase 1-4 orchestration + PDF rendering + LLM)
+// ============================================================
+
+export { pdfToHide, pdfToHideFromFile } from './pdfToHide';
+export type { PdfToHideOptions, PdfToHideResult } from './pdfToHide';
+
+// PDF→画像変換
+export { pdfToImages, pdfToImagesFromFile } from './pdfToImages';
+export type { PdfToImagesOptions, PdfToImagesResult } from './pdfToImages';
+
+// LLM 接続レイヤー
+export { createClaudeCaller } from './pdfHideLlm';
+export type { CallLlmFn, CallLlmInput, PdfHideLlmOptions } from './pdfHideLlm';
+
+// ============================================================
 // 低レベル API (LSP / 解析ツール / カスタム pipeline 用)
 // ============================================================
 export { tokenize } from './hideLexer';
