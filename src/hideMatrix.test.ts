@@ -161,6 +161,60 @@ describe('hideMatrix — barline tokenization compatibility', () => {
   });
 });
 
+describe('hideMatrix — tied note pitch dedup', () => {
+  it('does not double-count a tied note (dotted quarter expressed as C4k+C4j)', () => {
+    // 4/4 DIV=32: 1 小節 = 32u
+    // [1] = C4k+C4j (= 12u dotted quarter) + D4k (8u) + E4k (8u) + R4k (= Rj 4u)
+    //       → total 32u = full measure
+    // tie 前後の C4 は 1 音として数えたい (= pitches に C4 が 1 回だけ)
+    const source = '[1]| C4k+C4j D4k E4k Rj |';
+    const { matrix, issues } = analyzeMatrix(source);
+    expect(issues).toEqual([]);
+    const cell = matrix.measures[0].cells.get('1')!;
+    expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'D4', 'E4']);
+    // durationUnits は依然として 32u (= 12 + 8 + 8 + 4)
+    expect(cell.durationUnits).toBe(32);
+  });
+
+  it('does not dedup when tied-to-next is followed by a different pitch', () => {
+    // C4k+D4k は音楽的に不正な tie だが、厳密一致でのみ dedup する方針。
+    // D4 は別の音として pitches に載る。
+    const source = '[1]| C4k+D4k E4k F4k |';
+    const { matrix, issues } = analyzeMatrix(source);
+    expect(issues).toEqual([]);
+    const cell = matrix.measures[0].cells.get('1')!;
+    expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'D4', 'E4', 'F4']);
+  });
+
+  it('handles chained ties (C4k+C4j+C4i = quarter+eighth+16th = 14u)', () => {
+    // 14 + 8 + 8 + 2 = 32u
+    const source = '[1]| C4k+C4j+C4i D4k E4k Ri |';
+    const { matrix, issues } = analyzeMatrix(source);
+    expect(issues).toEqual([]);
+    const cell = matrix.measures[0].cells.get('1')!;
+    expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'D4', 'E4']);
+  });
+
+  it('dedups chord ties when the chord pitches are identical', () => {
+    // C4E4k+C4E4j = tied chord dotted quarter. pitches は [C4, E4] で 1 回のみ。
+    const source = '[1]| C4E4k+C4E4j D4k Rk Rj |';
+    const { matrix, issues } = analyzeMatrix(source);
+    expect(issues).toEqual([]);
+    const cell = matrix.measures[0].cells.get('1')!;
+    expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'E4', 'D4']);
+  });
+
+  it('rest breaks the tie context', () => {
+    // C4k+(rest)C4k は tie context が rest で切れるので、後続 C4k は新しい音
+    const source = '[1]| C4k+Rk C4k D4k |';
+    const { matrix, issues } = analyzeMatrix(source);
+    expect(issues).toEqual([]);
+    const cell = matrix.measures[0].cells.get('1')!;
+    // 前半 C4k の後に rest が来て tie 継続を切る → 後続の C4k は別の音としてカウント
+    expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'C4', 'D4']);
+  });
+});
+
 describe('hideMatrix — legacy SATB removal still rejected', () => {
   it('rejects [P1] (legacy)', () => {
     expect(() => compileHide('[P1]C4k')).toThrow();

@@ -448,20 +448,55 @@ function computeBodyDuration(body: HideToken[]): number {
  * AST body から全ピッチを source 順 (反復は演奏順、和音はインライン) で収集する。
  * 休符は含めない (matrix mode の典型用途は和音抽出なので)。
  */
+/**
+ * セル内の全ピッチを source 順に展開して返す。
+ *
+ * **tie dedup**: `tieToNext: true` の note の直後に **同一ピッチ集合** の note が
+ * 続いた場合、その後続 note は「タイで繋がれた継続」とみなし pitches 配列に
+ * 重複して載せない。これは dotted quarter を `C4k+C4j` と表した場合 (12u)
+ * に C4 が 1 回だけカウントされるようにするため。ピッチ集合が異なる場合は
+ * 通常の新しい音とみなして載せる (音楽的には誤用だが、厳密一致でのみ dedup
+ * する保守的な扱い)。
+ *
+ * rest / meta / measureBarrier はタイ継続コンテキストを切る。
+ * tuplet の内側は現状 dedup しない (単純化のため)。
+ */
 function collectPitches(body: HideToken[]): HidePitch[] {
   const out: HidePitch[] = [];
+  let prevTiedPitches: HidePitch[] | null = null;
   for (const tok of body) {
     if (tok.kind === 'note') {
-      for (const p of tok.pitches) out.push(p);
+      const isTiedContinuation =
+        prevTiedPitches !== null && pitchesEqual(prevTiedPitches, tok.pitches);
+      if (!isTiedContinuation) {
+        for (const p of tok.pitches) out.push(p);
+      }
+      prevTiedPitches = tok.tieToNext ? tok.pitches : null;
     } else if (tok.kind === 'tuplet') {
       for (const m of tok.members) {
         if (m.kind === 'note') for (const p of m.pitches) out.push(p);
       }
+      prevTiedPitches = null;
     } else if (tok.kind === 'repeat') {
       const inner = collectPitches(tok.body);
       const count = Math.max(1, Math.floor(tok.count));
       for (let i = 0; i < count; i++) for (const p of inner) out.push(p);
+      prevTiedPitches = null;
+    } else if (tok.kind === 'rest') {
+      prevTiedPitches = null;
     }
+    // meta は pitches に影響せず、tie コンテキストも維持する
   }
   return out;
+}
+
+/** 2つのピッチ配列を step/octave/alter 全一致で比較 (順序も考慮) */
+function pitchesEqual(a: HidePitch[], b: HidePitch[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i].step !== b[i].step) return false;
+    if (a[i].octave !== b[i].octave) return false;
+    if (a[i].alter !== b[i].alter) return false;
+  }
+  return true;
 }

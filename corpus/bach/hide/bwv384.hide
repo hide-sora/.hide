@@ -1,5 +1,5 @@
 [CLEF:TREBLE TIME:4/4 KEY:-3 DIV:40320]
-[1]| E5k D5j C5j . | G5k F5j E5j D5k E5j F5j . | Bn4l C5j D5j E5k . | A4k G4k F4k B4k . | G4l :. | G5k B4k . | An4k B4k E5k D5j C5j . | D5l D5k E5j F5j . | Bn4k G5k E5k D5j C5i . | C5l ... |
-[2]| G4k F4k . | E4j F4j G4k A4k G4j F4j . | G4l G4k G4k . | F4k B3k B3k F4k . | E4l :. | E4k E4k . | F4k F4k G4k F4k . | F4l F4k F4k . | G4k G4k G4k F4j E4i . | E4l ... |
-[3]| C4k Bn3k . | C4k C4k C4k Bn3j C4j . | D4l C4k C4k . | C4j D4j E4k E4k D4k . | B3l :. | B3k B3k . | C4k B3k B3k An3k . | B3l B3k C4k . | D4k C4k C4k Bn3j . | G3l ... |
+[1]| E5k D5j C5j . | G5k F5j E5j D5k E5j F5j . | Bn4l C5j D5j E5k . | A4k G4k F4k B4k . | G4l :. | G5k B4k . | An4k B4k E5k D5j C5j . | D5l D5k E5j F5j . | Bn4k G5k E5k D5j+ D5i C5i . | C5l ... |
+[2]| G4k F4k . | E4j F4j G4k A4k G4j F4j . | G4l G4k G4k . | F4k B3k B3k F4k . | E4l :. | E4k E4k . | F4k F4k G4k F4k . | F4l F4k F4k . | G4k G4k G4k F4j+ F4i E4i . | E4l ... |
+[3]| C4k Bn3k . | C4k C4k C4k Bn3j C4j . | D4l C4k C4k . | C4j D4j E4k E4k D4k . | B3l :. | B3k B3k . | C4k B3k B3k An3k . | B3l B3k C4k . | D4k C4k C4k+ C4j Bn3j . | G3l ... |
 [4]| C3k D3k . | E3k C3k F3k G3j A3j . | G3l E3j D3j C3k . | F3k G3j A3j B3k B2k . | E3l :. | E3k G3k . | F3j E3j D3k C3k F3k . | B2l B3k A3k . | G3j F3j E3j F3j G3k G2k . | C3l ... |

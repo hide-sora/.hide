@@ -329,15 +329,16 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     }
   });
 
-  it('emits nonStandardDuration diagnostic on a duration that does not map to a base length', () => {
-    // duration=7 は h(1)/i(2)/j(4)/k(8)/l(16)/m(32) のどれでもない
+  it('emits nonStandardDuration diagnostic on a truly non-decomposable duration', () => {
+    // divisions=3 → div=12: m=12, l=6, k=3 (j,i,h は非整数でスキップ)
+    // duration=5 → 5 - 3 = 2, 2 < 3 (最小整数 unit) → 分解不能 → fallback
     const xml = `<?xml version="1.0"?>
 <score-partwise>
   <part-list><score-part id="P1"/></part-list>
   <part id="P1">
     <measure number="1">
-      <attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
-      <note><pitch><step>C</step><octave>5</octave></pitch><duration>7</duration><type>quarter</type></note>
+      <attributes><divisions>3</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>5</duration><type>quarter</type></note>
     </measure>
   </part>
 </score-partwise>`;
@@ -347,8 +348,31 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     if (nsd && nsd.kind === 'nonStandardDuration') {
       expect(nsd.partIndex).toBe(0);
       expect(nsd.measureIndex).toBe(0);
-      expect(nsd.durationUnits).toBe(7);
+      expect(nsd.durationUnits).toBe(5);
     }
+  });
+
+  it('decomposes dotted quarter (duration=12 at div=32) into tie chain instead of diagnostic', () => {
+    // divisions=8 → div=32: k=8, j=4 → duration 12 = k+j (付点4分)
+    const xml = `<?xml version="1.0"?>
+<score-partwise>
+  <part-list><score-part id="P1"/></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>12</duration><type>dotted-quarter</type></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>4</duration><type>eighth</type></note>
+      <note><rest/><duration>16</duration><type>half</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const { hideSource, diagnostics } = musicXmlToHide(xml);
+    // 付点4分は nonStandardDuration ではなく tie 分解で処理される
+    const nsd = diagnostics.find(d => d.kind === 'nonStandardDuration');
+    expect(nsd).toBeUndefined();
+    // C5k+C5j (= tied quarter + eighth) が出力に含まれる
+    expect(hideSource).toContain('C5k+');
+    expect(hideSource).toContain('C5j');
   });
 
   it('warnings string array still mirrors diagnostics for human readability', () => {

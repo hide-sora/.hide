@@ -415,12 +415,23 @@ function convertMeasureToHide(
       i = j;
       continue;
     }
-    const lengthChar = unitsToLengthChar(head.duration, header, warnings, diagnostics, partIndex, measureIndex);
-    if (lengthChar) {
-      const tokenStr = chordPitches.map(p => formatPitch(p, header.keyFifths)).join('') + lengthChar;
-      // タイ: head が tieStart の場合、トークン直後に '+'
-      const withTie = head.tieStart ? `${tokenStr}+` : tokenStr;
-      out.push(withTie);
+    const pitchStr = chordPitches.map(p => formatPitch(p, header.keyFifths)).join('');
+    const decomposed = decomposeDurationToLengthChars(head.duration, header.div);
+    if (decomposed.length > 0) {
+      // タイ連鎖で正確な duration を表現 (例: 付点4分 → C4k+C4j)
+      for (let di = 0; di < decomposed.length; di++) {
+        const token = pitchStr + decomposed[di];
+        const needTie = di < decomposed.length - 1 || head.tieStart;
+        out.push(needTie ? `${token}+` : token);
+      }
+    } else {
+      // Fallback: 分解不能 (非整数 unit の極端な DIV) → 最近接近似
+      const lengthChar = unitsToLengthChar(head.duration, header, warnings, diagnostics, partIndex, measureIndex);
+      if (lengthChar) {
+        const tokenStr = pitchStr + lengthChar;
+        const withTie = head.tieStart ? `${tokenStr}+` : tokenStr;
+        out.push(withTie);
+      }
     }
     i = j;
   }
@@ -544,12 +555,42 @@ function durationToRest(
   measureIndex: number,
 ): string {
   // MusicXML の <duration> 値は divisions 単位 (= quarter note divisions)
-  // .hide の length char は header.div 単位
-  // → スケール: hideUnits = duration * (header.div / divisionsXml / 4 * 4) = duration * (header.div / header.divisionsXml / 4)
-  //    が、divisionsXml = header.div / 4 なので結局 hideUnits = duration
+  // divisionsXml = header.div / 4 なので hideUnits = duration
   const hideUnits = duration;
+  const decomposed = decomposeDurationToLengthChars(hideUnits, header.div);
+  if (decomposed.length > 0) {
+    return decomposed.map(c => `R${c}`).join(' ');
+  }
+  // Fallback: 分解不能 → 最近接近似
   const lc = unitsToLengthChar(hideUnits, header, warnings, diagnostics, partIndex, measureIndex);
   return lc ? `R${lc}` : '';
+}
+
+/**
+ * duration を標準長さ文字の列に貪欲分解する (greedy descending)。
+ * 例: DIV=16 で duration=6 → ['k', 'j'] (= quarter + eighth = 付点4分)
+ * 分解不能な場合は空配列を返す。
+ */
+function decomposeDurationToLengthChars(units: number, div: number): string[] {
+  const descending: Array<{ char: string; rawAtDiv32: number }> = [
+    { char: 'm', rawAtDiv32: 32 },
+    { char: 'l', rawAtDiv32: 16 },
+    { char: 'k', rawAtDiv32: 8 },
+    { char: 'j', rawAtDiv32: 4 },
+    { char: 'i', rawAtDiv32: 2 },
+    { char: 'h', rawAtDiv32: 1 },
+  ];
+  const result: string[] = [];
+  let remaining = units;
+  for (const { char, rawAtDiv32 } of descending) {
+    const value = (rawAtDiv32 * div) / 32;
+    if (value < 1 || !Number.isInteger(value)) continue;
+    while (remaining >= value) {
+      result.push(char);
+      remaining -= value;
+    }
+  }
+  return remaining === 0 ? result : [];
 }
 
 function unitsToLengthChar(
