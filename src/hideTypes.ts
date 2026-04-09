@@ -104,7 +104,8 @@ export type HideUnit = number;
 export interface HideNoteToken {
   kind: 'note';
   pitches: HidePitch[];        // 和音対応
-  durationUnits: HideUnit;     // 例: jなら 4u
+  durationUnits: HideUnit;     // 例: jなら 4u (付点込み: k.=12u, k..=14u)
+  dots: number;                // 0=無し, 1=付点 (×1.5), 2=2重付点 (×1.75)
   staccato: boolean;           // 大文字長さ (K/L/M等)
   slurStart: boolean;          // 小文字音名 (a-g)
   tieToNext: boolean;          // 直後に '+' があった
@@ -115,7 +116,8 @@ export interface HideNoteToken {
 /** 休符トークン (Rk = 4分休符) */
 export interface HideRestToken {
   kind: 'rest';
-  durationUnits: HideUnit;
+  durationUnits: HideUnit;     // 付点込み: Rk.=12u, Rk..=14u
+  dots: number;                // 0=無し, 1=付点 (×1.5), 2=2重付点 (×1.75)
   staccato: boolean;
   tieToNext: boolean;
   tupletMember?: HideTupletMemberInfo;
@@ -147,11 +149,11 @@ export interface HideMetaToken {
 /**
  * 小節線スタイル (v1.9 後期で導入された 5 種類のバーライン語彙)
  *
- *  - `single`     : `.`   通常の小節線 (MusicXML 暗黙)
- *  - `double`     : `..`  複縦線 (light-light)
- *  - `final`      : `...` 終止線 (light-heavy)
- *  - `repeatStart`: `.:`  繰り返しスタート (heavy-light + repeat forward, 次の小節の左端)
- *  - `repeatEnd`  : `:.`  繰り返し終わり (light-heavy + repeat backward, 現在の小節の右端)
+ *  - `single`     : `,`   通常の小節線 (MusicXML 暗黙)
+ *  - `double`     : `,,`  複縦線 (light-light)
+ *  - `final`      : `,,,` 終止線 (light-heavy)
+ *  - `repeatStart`: `,:` 繰り返しスタート (heavy-light + repeat forward, 次の小節の左端)
+ *  - `repeatEnd`  : `:,`  繰り返し終わり (light-heavy + repeat backward, 現在の小節の右端)
  */
 export type HideBarlineStyle = 'single' | 'double' | 'final' | 'repeatStart' | 'repeatEnd';
 
@@ -165,6 +167,9 @@ export type HideBarlineStyle = 'single' | 'double' | 'final' | 'repeatStart' | '
  *   3. 新しい bucket を開始
  * という処理をする。`|` は引き続き whitespace 扱い (matrix mode の cell 区切り
  * としてのみ意味を持つ)。
+ *
+ * ソース表記: `,` `,,` `,,,` `,:` `:,`
+ * (`.` は付点修飾子として使用: `k.` = 付点四分音符)
  *
  * forward (`compileHide`) / reverse (`musicXmlToHide`) / future PDF OMR の
  * 三者で一貫する end-of-measure マーカー。

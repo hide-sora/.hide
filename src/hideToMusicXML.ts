@@ -552,8 +552,11 @@ function emitNote(
   tupletScale: number,
 ): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
-  // <type> は連符でも元の長さ文字 (j など) から決める
-  const noteType = unitsToNoteType(tok.durationUnits);
+  // <type> は付点なしのベース長さから決める (k.=12u → base 8u = quarter)
+  const baseUnits = tok.dots === 2 ? tok.durationUnits / 1.75
+    : tok.dots === 1 ? tok.durationUnits / 1.5
+    : tok.durationUnits;
+  const noteType = unitsToNoteType(Math.round(baseUnits));
 
   // 連符 time-modification の actual:normal を計算
   let timeModXml: string | null = null;
@@ -588,6 +591,7 @@ function emitNote(
     out.push(`        <duration>${emittedDur}</duration>`);
     out.push('        <voice>1</voice>');
     out.push(`        <type>${noteType}</type>`);
+    for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
     if (timeModXml) out.push(timeModXml);
 
     // 明示臨時記号 → <accidental> も書く (OSMD/OMR 表示用)
@@ -646,11 +650,15 @@ function alterToAccidentalName(alter: -1 | 0 | 1): string | null {
 
 function emitRest(out: string[], tok: HideRestToken, tupletScale: number): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
+  const baseUnits = tok.dots === 2 ? tok.durationUnits / 1.75
+    : tok.dots === 1 ? tok.durationUnits / 1.5
+    : tok.durationUnits;
   out.push('      <note>');
   out.push('        <rest/>');
   out.push(`        <duration>${emittedDur}</duration>`);
   out.push('        <voice>1</voice>');
-  out.push(`        <type>${unitsToNoteType(tok.durationUnits)}</type>`);
+  out.push(`        <type>${unitsToNoteType(Math.round(baseUnits))}</type>`);
+  for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
   // 休符の連符 time-modification (連符内に休符がある場合)
   if (tok.tupletMember) {
     const { totalMembers, targetUnits, memberIndex } = tok.tupletMember;

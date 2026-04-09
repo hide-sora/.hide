@@ -171,13 +171,13 @@ describe('musicXmlToHide — error handling', () => {
 
 describe('compileHide — dynamic tempo / time signature (v1.9 Task C)', () => {
   it('emits initial tempo as <metronome>', () => {
-    const { musicXml, warnings } = compileHide('[T120][1] C5m .');
+    const { musicXml, warnings } = compileHide('[T120][1] C5m ,');
     expect(warnings).toEqual([]);
     expect(musicXml).toMatch(/<per-minute>120<\/per-minute>/);
   });
 
   it('emits mid-piece tempo change as <direction>', () => {
-    const { musicXml, warnings } = compileHide('[T120][1] C5m . [T90] B4m .');
+    const { musicXml, warnings } = compileHide('[T120][1] C5m , [T90] B4m ,');
     expect(warnings).toEqual([]);
     // 2 つのテンポ宣言 → 2 つの metronome 出力
     const metronomeCount = (musicXml.match(/<metronome>/g) ?? []).length;
@@ -189,7 +189,7 @@ describe('compileHide — dynamic tempo / time signature (v1.9 Task C)', () => {
   it('emits mid-piece time signature change as new <attributes>', () => {
     // 4/4 で 1 小節打って → 3/4 に変更 → 1 小節打つ
     // 3/4 = 24u → 4分音符 3 個 (3k)
-    const { musicXml, warnings } = compileHide('[1] C5m . [M3/4] D5kE5kF5k .');
+    const { musicXml, warnings } = compileHide('[1] C5m , [M3/4] D5kE5kF5k ,');
     expect(warnings).toEqual([]);
     // 1 小節目: 4/4 (header) / 2 小節目: 3/4
     const beatsList = [...musicXml.matchAll(/<beats>(\d+)<\/beats>/g)].map(m => m[1]);
@@ -199,7 +199,7 @@ describe('compileHide — dynamic tempo / time signature (v1.9 Task C)', () => {
 
   it('warns when [M3/4] is inserted mid-measure', () => {
     // 4/4 で 半音符 (16u) しか書いてないのに 3/4 に変更
-    const { warnings } = compileHide('[1] C5l [M3/4] D5l.');
+    const { warnings } = compileHide('[1] C5l [M3/4] D5l,');
     expect(warnings.some(w => /時間署名/.test(w))).toBe(true);
   });
 });
@@ -275,7 +275,7 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
 
   it('emits multipleAttributes diagnostic when <attributes> appears more than once', () => {
     // [M] による mid-piece time change を逆変換に通すと multipleAttributes が出る
-    const original = '[1] C5m . [M3/4] D5kE5kF5k .';
+    const original = '[1] C5m , [M3/4] D5kE5kF5k ,';
     const { musicXml } = compileHide(original);
     const { diagnostics } = musicXmlToHide(musicXml);
     const ma = diagnostics.find(d => d.kind === 'multipleAttributes');
@@ -353,7 +353,7 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
 
   it('warnings string array still mirrors diagnostics for human readability', () => {
     // multipleAttributes が出る既知ケースで両方が同期していることを保証
-    const original = '[1] C5m . [M3/4] D5kE5kF5k .';
+    const original = '[1] C5m , [M3/4] D5kE5kF5k ,';
     const { musicXml } = compileHide(original);
     const { warnings, diagnostics } = musicXmlToHide(musicXml);
     expect(warnings.length).toBeGreaterThan(0);
@@ -361,70 +361,70 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
   });
 });
 
-describe('musicXmlToHide — barline vocabulary (v1.9 .)', () => {
-  it('emits a `.` (single) barrier per measure for plain pieces', () => {
+describe('musicXmlToHide — barline vocabulary (v1.9 ,)', () => {
+  it('emits a `,` (single) barrier per measure for plain pieces', () => {
     const original = '[1]| C5m | B4m | C5m |';
     const { musicXml } = compileHide(original);
     const { hideSource } = musicXmlToHide(musicXml);
-    // 各小節セルに `.` が含まれる
-    const dots = hideSource.match(/\./g) ?? [];
-    expect(dots.length).toBeGreaterThanOrEqual(3);
+    // 各小節セルに `,` が含まれる
+    const commas = hideSource.match(/,/g) ?? [];
+    expect(commas.length).toBeGreaterThanOrEqual(3);
   });
 
-  it('preserves `..` (double) barline through round-trip', () => {
+  it('preserves `,,` (double) barline through round-trip', () => {
     // C5m を 1 小節打ち、複縦線で閉じる
-    const original = '[1] C5m ..';
+    const original = '[1] C5m ,,';
     const { musicXml, warnings } = compileHide(original);
     expect(warnings).toEqual([]);
     expect(musicXml).toMatch(/<bar-style>light-light<\/bar-style>/);
 
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/\.\./);
+    expect(hideSource).toMatch(/,,/);
   });
 
-  it('preserves `...` (final) barline through round-trip', () => {
-    const original = '[1] C5m B4m C5m ...';
+  it('preserves `,,,` (final) barline through round-trip', () => {
+    const original = '[1] C5m B4m C5m ,,,';
     const { musicXml, warnings } = compileHide(original);
     expect(warnings).toEqual([]);
     // 終止線は最後の小節に
     expect(musicXml).toMatch(/<bar-style>light-heavy<\/bar-style>/);
 
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/\.\.\./);
+    expect(hideSource).toMatch(/,,,/);
   });
 
-  it('preserves `:.` (repeat end) barline through round-trip', () => {
-    const original = '[1] C5m :.';
+  it('preserves `:,` (repeat end) barline through round-trip', () => {
+    const original = '[1] C5m :,';
     const { musicXml, warnings } = compileHide(original);
     expect(warnings).toEqual([]);
     expect(musicXml).toMatch(/<repeat\s+direction="backward"/);
 
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/:\./);
+    expect(hideSource).toMatch(/:,/);
   });
 
-  it('preserves `.:` (repeat start) barline through round-trip', () => {
-    // .: は次の小節の左端マーカー → 1 小節目の前か、2 小節目の左
-    const original = '[1] .: C5m :.';
+  it('preserves `,:` (repeat start) barline through round-trip', () => {
+    // ,: は次の小節の左端マーカー → 1 小節目の前か、2 小節目の左
+    const original = '[1] ,: C5m :,';
     const { musicXml, warnings } = compileHide(original);
     expect(warnings).toEqual([]);
     expect(musicXml).toMatch(/<repeat\s+direction="forward"/);
     expect(musicXml).toMatch(/<repeat\s+direction="backward"/);
 
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/\.:/);
-    expect(hideSource).toMatch(/:\./);
+    expect(hideSource).toMatch(/,:/);
+    expect(hideSource).toMatch(/:,/);
   });
 
-  it('warns when `.` is placed before a measure is full', () => {
-    // 4/4 = 32u 必要なのに半分 (16u = C5l = 半音符1個) で `.` を打つ
-    const { warnings } = compileHide('[1] C5l .');
+  it('warns when `,` is placed before a measure is full', () => {
+    // 4/4 = 32u 必要なのに半分 (16u = C5l = 半音符1個) で `,` を打つ
+    const { warnings } = compileHide('[1] C5l ,');
     expect(warnings.some(w => /足りません/.test(w))).toBe(true);
   });
 
-  it('does not warn when `.` is placed exactly at measure end', () => {
+  it('does not warn when `,` is placed exactly at measure end', () => {
     // 4/4 で 4分音符 4 個 = 32u ぴったり
-    const { warnings } = compileHide('[1] C5k C5k C5k C5k .');
+    const { warnings } = compileHide('[1] C5k C5k C5k C5k ,');
     expect(warnings).toEqual([]);
   });
 });

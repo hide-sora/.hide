@@ -369,16 +369,16 @@ function splitTokensByPart(rawTokens: HideRawToken[]): {
  *
  * セル区切りとして認識するもの:
  *  - `|` (barline) — v1.8 からの grid form 区切り
- *  - `.` 系 (measureBarrier, 通常/複/終止/repeatEnd) — v1.9 で導入された stream form 区切り
- *    `.:` (repeatStart) は次の小節の左端マーカーであり区切りそのものではないため除外
+ *  - `,` 系 (measureBarrier, 通常/複/終止/repeatEnd) — v1.9 で導入された stream form 区切り
+ *    `,:` (repeatStart) は次の小節の左端マーカーであり区切りそのものではないため除外
  *
  * 空セルの扱い:
  *  - 先頭・末尾の完全空セルは捨てる (`[1]| C4k | D4k |` → 2セル)
- *  - **同種連続** `| |` や `. .` の間の空セルは「明示的な空小節」として残す
+ *  - **同種連続** `| |` や `, ,` の間の空セルは「明示的な空小節」として残す
  *    (例: `[1]| C4k | | D4k |` → 3セル、中央は duration=0 の空セル)
- *  - **異種連続** `| .` や `. |` は round-trip 出力由来の冗長境界 (= grid form の `|`
- *    と barline style の `.` 系を併記したケース) なので 1 つの境界として潰す
- *    cf. musicXmlToHide.ts の `convertMeasureToHide` がセル末尾に `.` 系を付加する
+ *  - **異種連続** `| ,` や `, |` は round-trip 出力由来の冗長境界 (= grid form の `|`
+ *    と barline style の `,` 系を併記したケース) なので 1 つの境界として潰す
+ *    cf. musicXmlToHide.ts の `convertMeasureToHide` がセル末尾に `,` 系を付加する
  */
 function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
   const cells: HideRawToken[][] = [];

@@ -81,11 +81,13 @@ export interface HideBarlineRawToken {
  * 小節終止マーカー (v1.9 後期で導入)
  *
  * 5 種類の語彙を持つ hard barrier:
- *   `.`   = single (通常小節線)
- *   `..`  = double (複縦線)
- *   `...` = final  (終止線)
- *   `.:`  = repeatStart (繰り返しスタート, 次の小節の左端)
- *   `:.`  = repeatEnd   (繰り返し終わり, 現在の小節の右端)
+ *   `,`   = single (通常小節線)
+ *   `,,`  = double (複縦線)
+ *   `,,,` = final  (終止線)
+ *   `,:` = repeatStart (繰り返しスタート, 次の小節の左端)
+ *   `:,`  = repeatEnd   (繰り返し終わり, 現在の小節の右端)
+ *
+ * `.` は付点修飾子 (例: `k.` = 付点四分音符) として使用する。
  *
  * `bucketize` が
  *   - 現在の bucket を即 close (totalUnits != unitsPerMeasure なら warning)
@@ -94,10 +96,6 @@ export interface HideBarlineRawToken {
  * という処理をする。`|` は引き続き whitespace 扱い (matrix mode の cell 区切り
  * としてのみ意味を持つ)。
  *
- * 設計理由: `.hide` の lexer は伝統的に `|` を whitespace として扱っており、
- * stream form では time signature の累積でしか measure 境界を決められなかった。
- * `[1]| C5k | B4k | C5k |` のような grid 風入力が意図と違う 1 小節に潰れる罠を
- * 解決するため、未使用文字 `.` を end-of-measure マーカーとして採用した。
  * forward (`compileHide`) / reverse (`musicXmlToHide`) / future PDF OMR の
  * 三者で一貫する設計。
  */
@@ -183,18 +181,18 @@ export function tokenize(source: string): HideLexResult {
     }
 
     // 小節終止マーカー (v1.9 後期: stream/reverse/OMR で一貫する end-of-measure)
-    //   `...` = final  (終止線)
-    //   `..`  = double (複縦線)
-    //   `.:`  = repeatStart (繰り返しスタート、次の小節の左端マーカー)
-    //   `.`   = single (通常小節線)
+    //   `,,,` = final  (終止線)
+    //   `,,`  = double (複縦線)
+    //   `,:` = repeatStart (繰り返しスタート、次の小節の左端マーカー)
+    //   `,`   = single (通常小節線)
     // 貪欲: 長いものから順に試す
-    if (c === '.') {
+    if (c === ',') {
       let style: HideBarlineStyle;
       let consumed: number;
-      if (source[i + 1] === '.' && source[i + 2] === '.') {
+      if (source[i + 1] === ',' && source[i + 2] === ',') {
         style = 'final';
         consumed = 3;
-      } else if (source[i + 1] === '.') {
+      } else if (source[i + 1] === ',') {
         style = 'double';
         consumed = 2;
       } else if (source[i + 1] === ':') {
@@ -228,9 +226,9 @@ export function tokenize(source: string): HideLexResult {
       continue;
     }
 
-    // `:.` = repeatEnd (繰り返し終わり、現在の小節の右端マーカー)
-    // 反復境界 `:` よりも先にチェックする (`:.` を `:` + `.` と誤読しないため)
-    if (c === ':' && source[i + 1] === '.') {
+    // `:,` = repeatEnd (繰り返し終わり、現在の小節の右端マーカー)
+    // 反復境界 `:` よりも先にチェックする (`:,` を `:` + `,` と誤読しないため)
+    if (c === ':' && source[i + 1] === ',') {
       tokens.push({ kind: 'measureBarrier', style: 'repeatEnd' });
       positions.push(startPos);
       i += 2;
@@ -311,21 +309,34 @@ export function tokenize(source: string): HideLexResult {
       continue;
     }
 
-    // 休符 R[h-mH-M]
+    // 休符 R[h-mH-M][.][.]
     if (c === 'R') {
       const lengthChar = source[i + 1];
       if (lengthChar && LENGTH_ALIAS_TO_UNITS[lengthChar] !== undefined) {
-        const units = getLengthUnits(lengthChar, header.div);
+        let baseUnits = getLengthUnits(lengthChar, header.div);
         const staccato = lengthChar === lengthChar.toUpperCase();
+        let consumed = 2; // R + lengthChar
+        // 付点: `.` = 1.5倍, `..` = 1.75倍
+        let dots = 0;
+        if (source[i + consumed] === '.') {
+          dots = 1;
+          consumed++;
+          if (source[i + consumed] === '.') {
+            dots = 2;
+            consumed++;
+          }
+        }
+        const durationUnits = dots === 2 ? baseUnits * 1.75 : dots === 1 ? baseUnits * 1.5 : baseUnits;
         const restToken: HideRestToken = {
           kind: 'rest',
-          durationUnits: units,
+          durationUnits: Math.round(durationUnits),
+          dots,
           staccato,
           tieToNext: false,
         };
         tokens.push(restToken);
         positions.push(startPos);
-        i += 2;
+        i += consumed;
         continue;
       }
       // R 単独 → 歌詞扱い
@@ -358,7 +369,7 @@ export function tokenize(source: string): HideLexResult {
       const lc = source[lyricEnd];
       if (
         isWhitespaceChar(lc) ||
-        lc === '|' || lc === ';' ||
+        lc === '|' || lc === ';' || lc === ',' ||
         lc === '[' || lc === ']' || lc === '(' || lc === ')' ||
         lc === ':' || lc === '+' || lc === "'" ||
         lc === 'R' || /[A-Ga-g]/.test(lc) || /[0-9]/.test(lc)
@@ -860,14 +871,26 @@ function tryParseNote(
     const next = source[i];
     if (next && LENGTH_ALIAS_TO_UNITS[next] !== undefined) {
       // 末尾長さ → トークン完成 (DIV対応スケール)
-      const units = getLengthUnits(next, div);
+      let baseUnits = getLengthUnits(next, div);
       const staccato = next === next.toUpperCase();
       i++;
+      // 付点: `.` = 1.5倍, `..` = 1.75倍
+      let dots = 0;
+      if (source[i] === '.') {
+        dots = 1;
+        i++;
+        if (source[i] === '.') {
+          dots = 2;
+          i++;
+        }
+      }
+      const durationUnits = dots === 2 ? baseUnits * 1.75 : dots === 1 ? baseUnits * 1.5 : baseUnits;
       return {
         token: {
           kind: 'note',
           pitches,
-          durationUnits: units,
+          durationUnits: Math.round(durationUnits),
+          dots,
           staccato,
           slurStart,
           tieToNext: false,

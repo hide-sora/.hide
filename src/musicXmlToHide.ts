@@ -314,6 +314,7 @@ interface XmlNote {
   isWholeMeasureRest: boolean;
   isChordContinuation: boolean;
   duration: number; // MusicXML の <duration>
+  dots: number;     // <dot/> の個数 (0, 1, 2)
   pitch?: HidePitch;
   tieStart: boolean;
   voice: number;
@@ -382,10 +383,10 @@ function convertMeasureToHide(
   const out: string[] = [];
 
   // 左端バーライン (`<barline location="left">` = 通常は repeatStart)
-  // → 小節の先頭に `.:` を出力
+  // → 小節の先頭に `,:` を出力
   const leftBarline = extractBarlineStyle(measureBody, 'left');
   if (leftBarline === 'repeatStart') {
-    out.push('.:');
+    out.push(',:');
   }
 
   let i = 0;
@@ -395,12 +396,12 @@ function convertMeasureToHide(
     // chord 集約: head + 続く isChordContinuation=true の note 群
     const chordPitches: HidePitch[] = [];
     if (head.isWholeMeasureRest) {
-      out.push(durationToRest(measureRestUnits(header), header, warnings, diagnostics, partIndex, measureIndex));
+      out.push(durationToRest(measureRestUnits(header), header, warnings, diagnostics, partIndex, measureIndex, 0));
       i++;
       continue;
     }
     if (head.isRest) {
-      out.push(durationToRest(head.duration, header, warnings, diagnostics, partIndex, measureIndex));
+      out.push(durationToRest(head.duration, header, warnings, diagnostics, partIndex, measureIndex, head.dots));
       i++;
       continue;
     }
@@ -415,9 +416,14 @@ function convertMeasureToHide(
       i = j;
       continue;
     }
-    const lengthChar = unitsToLengthChar(head.duration, header, warnings, diagnostics, partIndex, measureIndex);
+    // 付点の場合はベース duration を逆算して length char を引く
+    const baseDur = head.dots === 2 ? Math.round(head.duration / 1.75)
+      : head.dots === 1 ? Math.round(head.duration / 1.5)
+      : head.duration;
+    const lengthChar = unitsToLengthChar(baseDur, header, warnings, diagnostics, partIndex, measureIndex);
     if (lengthChar) {
-      const tokenStr = chordPitches.map(p => formatPitch(p, header.keyFifths)).join('') + lengthChar;
+      const dotStr = '.'.repeat(head.dots);
+      const tokenStr = chordPitches.map(p => formatPitch(p, header.keyFifths)).join('') + lengthChar + dotStr;
       // タイ: head が tieStart の場合、トークン直後に '+'
       const withTie = head.tieStart ? `${tokenStr}+` : tokenStr;
       out.push(withTie);
@@ -426,7 +432,7 @@ function convertMeasureToHide(
   }
 
   // 右端バーライン (`<barline location="right">` または末尾の暗黙的 location なし)
-  // → 小節の末尾に `.`/`..`/`.../`:.` を出力
+  // → 小節の末尾に `,`/`,,`/`,,,`/`:,` を出力
   const rightBarline = extractBarlineStyle(measureBody, 'right');
   out.push(barlineStyleToken(rightBarline ?? 'single'));
 
@@ -470,11 +476,11 @@ function extractBarlineStyle(
 /** バーラインスタイル → .hide ソース表現 */
 function barlineStyleToken(style: HideBarlineStyle): string {
   switch (style) {
-    case 'single': return '.';
-    case 'double': return '..';
-    case 'final': return '...';
-    case 'repeatStart': return '.:';
-    case 'repeatEnd': return ':.';
+    case 'single': return ',';
+    case 'double': return ',,';
+    case 'final': return ',,,';
+    case 'repeatStart': return ',:';
+    case 'repeatEnd': return ':,';
   }
 }
 
@@ -494,6 +500,7 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
   const isRest = restMatch !== null;
   const isWholeMeasureRest = !!restMatch && !!restMatch[1];
   const duration = parseIntFromTag(body, 'duration') ?? 0;
+  const dots = (body.match(/<dot\s*\/>/g) ?? []).length;
   const tieStart = /<tie\s+type="start"\s*\/>/.test(body);
   const voice = parseIntFromTag(body, 'voice') ?? 1;
   const hasTimeModification = /<time-modification>/.test(body);
@@ -523,6 +530,7 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
     isWholeMeasureRest,
     isChordContinuation,
     duration,
+    dots,
     pitch,
     tieStart,
     voice,
@@ -542,14 +550,20 @@ function durationToRest(
   diagnostics: MusicXmlToHideDiagnostic[],
   partIndex: number,
   measureIndex: number,
+  dotCount: number,
 ): string {
   // MusicXML の <duration> 値は divisions 単位 (= quarter note divisions)
   // .hide の length char は header.div 単位
   // → スケール: hideUnits = duration * (header.div / divisionsXml / 4 * 4) = duration * (header.div / header.divisionsXml / 4)
   //    が、divisionsXml = header.div / 4 なので結局 hideUnits = duration
   const hideUnits = duration;
-  const lc = unitsToLengthChar(hideUnits, header, warnings, diagnostics, partIndex, measureIndex);
-  return lc ? `R${lc}` : '';
+  // 付点の場合はベース duration を逆算して length char を引く
+  const baseUnits = dotCount === 2 ? Math.round(hideUnits / 1.75)
+    : dotCount === 1 ? Math.round(hideUnits / 1.5)
+    : hideUnits;
+  const lc = unitsToLengthChar(baseUnits, header, warnings, diagnostics, partIndex, measureIndex);
+  const dotStr = '.'.repeat(dotCount);
+  return lc ? `R${lc}${dotStr}` : '';
 }
 
 function unitsToLengthChar(
