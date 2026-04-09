@@ -382,6 +382,7 @@ function splitTokensByPart(rawTokens: HideRawToken[]): {
  */
 function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
   const cells: HideRawToken[][] = [];
+  const endedByRepeatEnd: boolean[] = [];
   let current: HideRawToken[] = [];
   // 直前に見た区切りの種類 (note/rest が来たら null にリセット)
   let lastSeparatorKind: 'barline' | 'measureBarrier' | null = null;
@@ -390,6 +391,7 @@ function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
     const isBarrier = tok.kind === 'measureBarrier' && tok.style !== 'repeatStart';
     if (isBarline || isBarrier) {
       const thisKind: 'barline' | 'measureBarrier' = isBarline ? 'barline' : 'measureBarrier';
+      const isRepEnd = tok.kind === 'measureBarrier' && (tok as { style?: string }).style === 'repeatEnd';
       // 異種連続 (`| .` や `. |`) で間に演奏要素がなければ「同じ境界の二重表現」
       // とみなし、既に push 済みの境界を再利用する。
       if (
@@ -397,11 +399,16 @@ function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
         lastSeparatorKind !== thisKind &&
         isCellPlayablyEmpty(current)
       ) {
+        // Propagate repeatEnd flag to the previously pushed cell
+        if (isRepEnd && endedByRepeatEnd.length > 0) {
+          endedByRepeatEnd[endedByRepeatEnd.length - 1] = true;
+        }
         current = [];
         lastSeparatorKind = thisKind;
         continue;
       }
       cells.push(current);
+      endedByRepeatEnd.push(isRepEnd);
       current = [];
       lastSeparatorKind = thisKind;
     } else {
@@ -414,10 +421,60 @@ function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
     }
   }
   cells.push(current);
+  endedByRepeatEnd.push(false);
+
+  // Expand repeat regions: .: ... :. → duplicate enclosed cells
+  const expanded = expandRepeatCells(cells, endedByRepeatEnd);
+
   // 先頭・末尾の完全空セルだけ削る (内部空セルは残す)
-  while (cells.length > 0 && isCellPlayablyEmpty(cells[0])) cells.shift();
-  while (cells.length > 0 && isCellPlayablyEmpty(cells[cells.length - 1])) cells.pop();
-  return cells;
+  while (expanded.length > 0 && isCellPlayablyEmpty(expanded[0])) expanded.shift();
+  while (expanded.length > 0 && isCellPlayablyEmpty(expanded[expanded.length - 1])) expanded.pop();
+  return expanded;
+}
+
+/**
+ * `.:` (repeatStart) と `:.` (repeatEnd) で囲まれたセル群を複製する。
+ *
+ * `.:` が無い `:.` は「曲頭から繰り返し」として扱う (音楽慣習)。
+ */
+function expandRepeatCells(
+  cells: HideRawToken[][],
+  endedByRepeatEnd: boolean[],
+): HideRawToken[][] {
+  const result: HideRawToken[][] = [];
+  let repeatStartIndex: number | null = null;
+
+  for (let i = 0; i < cells.length; i++) {
+    const cell = cells[i];
+    const hasRepeatStart = cell.some(
+      t => t.kind === 'measureBarrier' && (t as { style?: string }).style === 'repeatStart',
+    );
+
+    if (hasRepeatStart) {
+      repeatStartIndex = result.length;
+      // Strip the repeatStart marker from the cell content
+      result.push(cell.filter(
+        t => !(t.kind === 'measureBarrier' && (t as { style?: string }).style === 'repeatStart'),
+      ));
+    } else {
+      result.push(cell);
+    }
+
+    if (endedByRepeatEnd[i]) {
+      // 「曲頭から」: repeatStart が無ければ最初の非空セルから
+      let fromIndex = repeatStartIndex ?? 0;
+      while (fromIndex < result.length && isCellPlayablyEmpty(result[fromIndex])) {
+        fromIndex++;
+      }
+      const repeatRange = result.slice(fromIndex);
+      for (const r of repeatRange) {
+        result.push([...r]);
+      }
+      repeatStartIndex = null;
+    }
+  }
+
+  return result;
 }
 
 /**

@@ -161,6 +161,64 @@ describe('hideMatrix — barline tokenization compatibility', () => {
   });
 });
 
+describe('hideMatrix — repeat expansion (.: / :.)', () => {
+  it('expands a single repeat region (.: A :. → A A)', () => {
+    // 1小節の繰り返し: .: C4m :. → 2小節に展開される
+    const source = '[1]| C5m . .: D5m :. E5m . |';
+    const { matrix, issues } = analyzeMatrix(source);
+    // C5m, D5m, D5m (repeat), E5m → 4 measures
+    expect(matrix.measures).toHaveLength(4);
+    expect(issues.filter(i => i.kind === 'measureDurationMismatch')).toEqual([]);
+    const pitches = matrix.measures.map(
+      m => m.cells.get('1')!.pitches.map(pitchToString),
+    );
+    expect(pitches).toEqual([['C5'], ['D5'], ['D5'], ['E5']]);
+  });
+
+  it('expands multi-measure repeat region', () => {
+    // .: A . B :. → A, B, A, B
+    const source = '[1]| .: C5m . D5m :. E5m . |';
+    const { matrix } = analyzeMatrix(source);
+    expect(matrix.measures).toHaveLength(5);
+    const pitches = matrix.measures.map(
+      m => m.cells.get('1')!.pitches.map(pitchToString),
+    );
+    // No leading cell before .: so it's: C5, D5, C5, D5, E5
+    expect(pitches).toEqual([['C5'], ['D5'], ['C5'], ['D5'], ['E5']]);
+  });
+
+  it('repeat without .: (repeat from beginning)', () => {
+    // 曲頭から繰り返し: C . D :. E → C, D, C, D, E
+    const source = '[1]| C5m . D5m :. E5m . |';
+    const { matrix } = analyzeMatrix(source);
+    expect(matrix.measures).toHaveLength(5);
+    const pitches = matrix.measures.map(
+      m => m.cells.get('1')!.pitches.map(pitchToString),
+    );
+    expect(pitches).toEqual([['C5'], ['D5'], ['C5'], ['D5'], ['E5']]);
+  });
+
+  it('works with multi-part grid', () => {
+    const source =
+      '[1]| C5m . .: D5m :. E5m . |\n' +
+      '[2]| G4m . .: A4m :. B4m . |';
+    const { matrix } = analyzeMatrix(source);
+    expect(matrix.measures).toHaveLength(4);
+    // Part 1: C5, D5, D5, E5
+    const p1 = matrix.measures.map(m => m.cells.get('1')!.pitches.map(pitchToString));
+    expect(p1).toEqual([['C5'], ['D5'], ['D5'], ['E5']]);
+    // Part 2: G4, A4, A4, B4
+    const p2 = matrix.measures.map(m => m.cells.get('2')!.pitches.map(pitchToString));
+    expect(p2).toEqual([['G4'], ['A4'], ['A4'], ['B4']]);
+  });
+
+  it('no repeat markers → no expansion (regression)', () => {
+    const source = '[1]| C5m . D5m . E5m . |';
+    const { matrix } = analyzeMatrix(source);
+    expect(matrix.measures).toHaveLength(3);
+  });
+});
+
 describe('hideMatrix — legacy SATB removal still rejected', () => {
   it('rejects [P1] (legacy)', () => {
     expect(() => compileHide('[P1]C4k')).toThrow();
