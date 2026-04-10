@@ -327,14 +327,14 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
   });
 
   it('emits nonStandardDuration diagnostic on a duration that does not map to a base length', () => {
-    // duration=7 は h(1)/i(2)/j(4)/k(8)/l(16)/m(32) のどれでもない
+    // duration=5 は基本音価 (h/i/j/k/l/m) にも付点にもマッチしない
     const xml = `<?xml version="1.0"?>
 <score-partwise>
   <part-list><score-part id="P1"/></part-list>
   <part id="P1">
     <measure number="1">
       <attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
-      <note><pitch><step>C</step><octave>5</octave></pitch><duration>7</duration><type>quarter</type></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>5</duration><type>quarter</type></note>
     </measure>
   </part>
 </score-partwise>`;
@@ -344,7 +344,7 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     if (nsd && nsd.kind === 'nonStandardDuration') {
       expect(nsd.partIndex).toBe(0);
       expect(nsd.measureIndex).toBe(0);
-      expect(nsd.durationUnits).toBe(7);
+      expect(nsd.durationUnits).toBe(5);
     }
   });
 
