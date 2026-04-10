@@ -11,19 +11,17 @@
  *   analyzeVoiceLeading(matrix)        → 声部進行 caution observation (descriptive、禁則ではない)
  *   musicXmlToHide(xml, opts)          → MusicXML → .hide 逆変換 + 構造化 diagnostics
  *
- *   === v1.10 PDF→.hide pipeline (Plan H: 適材適所 hybrid + 100% 優先) ===
- *   Phase 1 (LLM 全曲構造解析):
- *     buildPdfHideMetaPrompt(input)    → LLM 用 multimodal prompt
- *     applyPdfHideMetaResponse(input)  → LLM 応答 → PdfHideScoreContext
- *   Phase 2a (古典 OMR レイアウト検出):
- *     extractPageLayout(input)         → PageLayout[] (staff/system/cell 幾何)
- *   Phase 2b (古典 OMR notehead 検出):
- *     detectNoteheadsInCell(input)     → Notehead[] + confidence
- *   Phase 3 (assembly + diagnostic emit):
- *     assemblePdfHide(input)           → .hide ソース + diagnostics + lowConfidenceCells
- *   Phase 4 (LLM 低信頼セル補完):
- *     buildPdfHideLlmFallbackPrompt(input)   → LLM 用 multimodal prompt
- *     applyPdfHideLlmFallbackResponse(input) → LLM 応答 → cell overrides + unresolved
+ *   === v1.10 PDF→.hide pipeline (Audiveris OMR + musicXmlToHide) ===
+ *   pdfToHide(pdfData, opts)             → PDF → Audiveris → MusicXML → .hide
+ *   pdfToHideFromFile(path, opts)        → 同上 (ファイルパス版)
+ *   runAudiveris(pdfPath, opts)          → Audiveris CLI wrapper (PDF → MusicXML)
+ *
+ *   === 低レベル画像処理 / OMR モジュール (experimental) ===
+ *   buildPdfHideMetaPrompt / applyPdfHideMetaResponse — LLM 構造解析
+ *   extractPageLayout — 五線/小節線の幾何検出
+ *   detectNoteheadsInCell — テンプレートマッチ符頭検出
+ *   assemblePdfHide — assembly + diagnostic emit
+ *   buildPdfHideLlmFallbackPrompt / applyPdfHideLlmFallbackResponse — LLM fallback
  *
  *   === 低レベル API ===
  *   tokenize(source)                   → 生トークン列
@@ -185,11 +183,19 @@ export type {
 } from './pdfHideLlmFallback';
 
 // ============================================================
-// End-to-end PDF→.hide (Phase 1-4 orchestration + PDF rendering + LLM)
+// End-to-end PDF→.hide (Audiveris OMR → musicXmlToHide)
 // ============================================================
 
 export { pdfToHide, pdfToHideFromFile } from './pdfToHide';
 export type { PdfToHideOptions, PdfToHideResult } from './pdfToHide';
+
+// Audiveris CLI wrapper
+export { runAudiveris } from './pdfHideAudiveris';
+export type { AudiverisOptions, AudiverisResult } from './pdfHideAudiveris';
+
+// LLM レビュー (draft .hide + PDF画像 → 校正)
+export { reviewHideWithLlm } from './pdfHideLlmReview';
+export type { LlmReviewInput, LlmReviewResult } from './pdfHideLlmReview';
 
 // PDF→画像変換
 export { pdfToImages, pdfToImagesFromFile } from './pdfToImages';

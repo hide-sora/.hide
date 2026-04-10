@@ -109,15 +109,12 @@ describe('musicXmlToHide — header preservation', () => {
     expect(header.div).toBe(32);
 
     // round-trip 後の matrix 構造を確認
-    // ※ 注意: matrix mode は key signature を適用せず、lexer 由来の生 alter を返す。
-    //   元が `F#5` (explicit accidental) で key sig が D major (fifths=2) のとき、
-    //   forward は <alter> を省略 (key sig で十分)、reverse は bare 'F5' を出力する。
-    //   よって matrix の pitch.alter は 0 → 文字列は 'F5' になる。
-    //   "F5 in D major sounds as F#" は .hide ソース上のセマンティクスで担保される。
+    // .hide パーサーは key signature を音符に適用しないため、
+    // 臨時記号は常に明示的に出力される。F#5 → F#5, C#5 → C#5 がそのまま残る。
     const { matrix } = analyzeMatrix(hideSource);
     expect(matrix.measures).toHaveLength(1);
     const part1 = matrix.measures[0].cells.get('1')!;
-    expect(part1.pitches.map(pitchToString)).toEqual(['F5', 'C5', 'D5']);
+    expect(part1.pitches.map(pitchToString)).toEqual(['F#5', 'C#5', 'D5']);
   });
 
   it('preserves accidentals against the key signature (Cn in D major)', () => {
@@ -130,11 +127,10 @@ describe('musicXmlToHide — header preservation', () => {
     const { hideSource, warnings } = musicXmlToHide(musicXml);
     expect(warnings).toEqual([]);
 
-    // 戻りソース内に明示的な 'n' (Cn) が含まれているかを直接確認
-    expect(hideSource).toMatch(/Cn5/);
-    // F は key sig で # 扱いなので bare 'F5' になる
-    expect(hideSource).toMatch(/F5/);
-    expect(hideSource).not.toMatch(/F#5/);
+    // .hide は臨時記号を常に明示する。C natural (alter=0) は 'C5' (n 不要)。
+    // F# (alter=1) は 'F#5' と明示される。
+    expect(hideSource).toMatch(/C5/);
+    expect(hideSource).toMatch(/F#5/);
   });
 });
 
@@ -308,25 +304,26 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     }
   });
 
-  it('emits tupletDetected diagnostic on <time-modification>', () => {
+  it('converts <time-modification> to N(...) tuplet syntax', () => {
+    // 3連符: 3つの音符が 2 quarter note 分の時間に入る
+    // divisions=8, duration=16 (= 2 quarter notes total / 3 ≈ 5.33... 実際は各16u指定)
+    // actual-notes=3, normal-notes=2
     const xml = `<?xml version="1.0"?>
 <score-partwise>
   <part-list><score-part id="P1"/></part-list>
   <part id="P1">
     <measure number="1">
       <attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
-      <note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification><type>quarter</type></note>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>16</duration><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification><type>quarter</type><notations><tuplet type="start" number="1"/></notations></note>
       <note><pitch><step>D</step><octave>5</octave></pitch><duration>16</duration><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification><type>quarter</type></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>16</duration><time-modification><actual-notes>3</actual-notes><normal-notes>2</normal-notes></time-modification><type>quarter</type><notations><tuplet type="stop" number="1"/></notations></note>
     </measure>
   </part>
 </score-partwise>`;
-    const { diagnostics } = musicXmlToHide(xml);
-    const td = diagnostics.find(d => d.kind === 'tupletDetected');
-    expect(td).toBeDefined();
-    if (td && td.kind === 'tupletDetected') {
-      expect(td.partIndex).toBe(0);
-      expect(td.measureIndex).toBe(0);
-    }
+    const { hideSource } = musicXmlToHide(xml);
+    // N(...) 構文が出力されることを確認
+    expect(hideSource).toMatch(/\d+\(/);
+    expect(hideSource).toMatch(/\)/);
   });
 
   it('emits nonStandardDuration diagnostic on a duration that does not map to a base length', () => {
@@ -426,5 +423,178 @@ describe('musicXmlToHide — barline vocabulary (v1.9 ,)', () => {
     // 4/4 で 4分音符 4 個 = 32u ぴったり
     const { warnings } = compileHide('[1] C5k C5k C5k C5k ,');
     expect(warnings).toEqual([]);
+  });
+});
+
+describe('musicXmlToHide — slur support', () => {
+  it('converts <slur type="start"> to lowercase pitch name', () => {
+    const original = '[1]| c5k C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<slur type="start"/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    // 小文字 c が出力される
+    expect(hideSource).toMatch(/c5/);
+  });
+});
+
+describe('musicXmlToHide — staccato support', () => {
+  it('converts <staccato/> to uppercase duration letter', () => {
+    const original = '[1]| C5K C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<staccato\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    // 大文字 K が出力される
+    expect(hideSource).toMatch(/C5K/);
+  });
+});
+
+describe('musicXmlToHide — dynamics support', () => {
+  it('round-trips [Df] dynamics through MusicXML', () => {
+    const original = '[Df][1] C5m ,';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<dynamics>/);
+    expect(musicXml).toMatch(/<f\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/\[Df\]/);
+  });
+
+  it('round-trips wedge (hairpin) through MusicXML', () => {
+    const original = '[D<][1] C5m , [D/] D5m ,';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<wedge type="crescendo"\/>/);
+    expect(musicXml).toMatch(/<wedge type="stop"\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/\[D<\]/);
+    expect(hideSource).toMatch(/\[D\/\]/);
+  });
+});
+
+describe('musicXmlToHide — tempo extraction', () => {
+  it('extracts <sound tempo> into [TN] meta command', () => {
+    const original = '[T120][1] C5m ,';
+    const { musicXml } = compileHide(original);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/\[T120\]/);
+  });
+});
+
+describe('musicXmlToHide — mid-piece time/key changes', () => {
+  it('emits [MN/D] for mid-piece time signature changes', () => {
+    const original = '[1] C5m , [M3/4] D5kE5kF5k ,';
+    const { musicXml } = compileHide(original);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/\[M3\/4\]/);
+  });
+});
+
+describe('musicXmlToHide — lyrics support', () => {
+  it('extracts <lyric><text> into lyric tokens', () => {
+    const xml = `<?xml version="1.0"?>
+<score-partwise>
+  <part-list><score-part id="P1"/></part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes><divisions>8</divisions><key><fifths>0</fifths></key><time><beats>4</beats><beat-type>4</beat-type></time><clef><sign>G</sign><line>2</line></clef></attributes>
+      <note><pitch><step>C</step><octave>5</octave></pitch><duration>8</duration><type>quarter</type><lyric number="1"><syllabic>single</syllabic><text>la</text></lyric></note>
+      <note><pitch><step>D</step><octave>5</octave></pitch><duration>8</duration><type>quarter</type><lyric number="1"><syllabic>single</syllabic><text>la</text></lyric></note>
+      <note><pitch><step>E</step><octave>5</octave></pitch><duration>8</duration><type>quarter</type></note>
+      <note><pitch><step>F</step><octave>5</octave></pitch><duration>8</duration><type>quarter</type></note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const { hideSource } = musicXmlToHide(xml);
+    // 歌詞テキストが含まれる
+    expect(hideSource).toMatch(/la/);
+  });
+});
+
+describe('musicXmlToHide — articulation extensions', () => {
+  it('round-trips accent (k>)', () => {
+    const original = '[1]| C5k> C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<accent\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5k>/);
+  });
+
+  it('round-trips tenuto (k-)', () => {
+    const original = '[1]| C5k- C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<tenuto\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5k-/);
+  });
+
+  it('round-trips fermata (k~)', () => {
+    const original = '[1]| C5k~ C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<fermata/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5k~/);
+  });
+
+  it('round-trips marcato (k^)', () => {
+    const original = '[1]| C5k^ C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<strong-accent/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5k\^/);
+  });
+
+  it('round-trips trill (k*)', () => {
+    const original = '[1]| C5k* C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<trill-mark\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5k\*/);
+  });
+
+  it('round-trips combined staccato+accent (K>)', () => {
+    const original = '[1]| C5K> C5k C5k C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<staccato\/>/);
+    expect(musicXml).toMatch(/<accent\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/C5K>/);
+  });
+});
+
+describe('musicXmlToHide — slur end', () => {
+  it('round-trips slur start and stop', () => {
+    const original = '[1]| c5k C5k C5k_ C5k |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<slur type="start"/);
+    expect(musicXml).toMatch(/<slur type="stop"/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/c5/);
+    expect(hideSource).toMatch(/_/);
+  });
+});
+
+describe('musicXmlToHide — grace notes', () => {
+  it('round-trips grace note (~)', () => {
+    const original = '[1]| ~C5j D5m |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<grace\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/~C5/);
+  });
+
+  it('round-trips acciaccatura (~~)', () => {
+    const original = '[1]| ~~C5j D5m |';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<grace slash="yes"\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/~~C5/);
+  });
+});
+
+describe('musicXmlToHide — volta brackets', () => {
+  it('round-trips volta [V1] through MusicXML', () => {
+    const original = '[1] ,: [V1] C5m :, ,: [V2] D5m :,';
+    const { musicXml } = compileHide(original);
+    expect(musicXml).toMatch(/<ending number="1" type="start"\/>/);
+    const { hideSource } = musicXmlToHide(musicXml);
+    expect(hideSource).toMatch(/\[V1\]/);
   });
 });

@@ -107,9 +107,16 @@ export interface HideNoteToken {
   durationUnits: HideUnit;     // 例: jなら 4u (付点込み: k.=12u, k..=14u)
   dots: number;                // 0=無し, 1=付点 (×1.5), 2=2重付点 (×1.75)
   staccato: boolean;           // 大文字長さ (K/L/M等)
+  accent: boolean;             // k> アクセント
+  tenuto: boolean;             // k- テヌート
+  fermata: boolean;            // k~ フェルマータ
+  marcato: boolean;            // k^ マルカート
+  trill: boolean;              // k* トリル
   slurStart: boolean;          // 小文字音名 (a-g)
+  slurEnd: boolean;            // _ サフィックス
   tieToNext: boolean;          // 直後に '+' があった
   tieFromPrev?: boolean;       // 自動タイ分割で前小節から繋がっている
+  graceType?: 'grace' | 'acciaccatura'; // ~ 前打音 / ~~ 短前打音
   lyric?: string;              // 直後の歌詞文字列
   tupletMember?: HideTupletMemberInfo;
 }
@@ -133,13 +140,16 @@ export interface HideRestToken {
  */
 export interface HideMetaToken {
   kind: 'meta';
-  type: 'tempo' | 'time' | 'key' | 'transpose' | 'partSwitch' | 'clefChange';
+  type: 'tempo' | 'time' | 'key' | 'transpose' | 'partSwitch' | 'clefChange' | 'dynamics' | 'volta';
   bpm?: number;                    // [T120] → 120
+  voltaNumber?: number;            // [V1] → 1, [V2] → 2
   timeNum?: number;                // [M3/4] → 3
   timeDen?: number;                // [M3/4] → 4
   keyFifths?: number;              // [KCm] → -3 (元曲の調変更)
   transposeSemitones?: number;     // [K+2] → 2 (半音シフト, v1.6)
   partLabel?: string;              // [1][2][P] → '1','2','P'  (v1.9: SATB は廃止)
+  /** 強弱記号 [Dp] [Df] [Dff] [Dmf] 等 / ヘアピン [D<] [D>] [D/] */
+  dynamics?: string;
   /**
    * 譜表 — partSwitch に付与された場合は「宣言時の譜表」、clefChange 単独の場合は
    * 「現在パートの譜表変更」。undefined は譜表指定なし。

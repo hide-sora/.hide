@@ -49,6 +49,8 @@ interface MeasureBucket {
   rightBarlineStyle?: HideBarlineStyle;
   /** この bucket の左端バーラインスタイル (`.:` のみ。前の bucket で `.:` を見たら次に立つ) */
   leftBarlineStyle?: HideBarlineStyle;
+  /** Volta (N番括弧) — この小節の左端に置く */
+  voltaNumber?: number;
 }
 
 /**
@@ -173,9 +175,9 @@ export function partitionedAstToMusicXML(
       const bucket = measures[mi];
       out.push(`    <measure number="${mi + 1}">`);
 
-      // 左端バーライン (`.:` = repeatStart)
-      if (bucket.leftBarlineStyle) {
-        emitBarline(out, bucket.leftBarlineStyle, 'left');
+      // 左端バーライン (`.:` = repeatStart) + volta
+      if (bucket.leftBarlineStyle || bucket.voltaNumber !== undefined) {
+        emitBarlineWithVolta(out, bucket.leftBarlineStyle, 'left', bucket.voltaNumber);
       }
 
       if (mi === 0) {
@@ -228,6 +230,8 @@ export function partitionedAstToMusicXML(
               continue;
             }
             emitTempoDirection(out, tok.bpm);
+          } else if (tok.kind === 'meta' && tok.type === 'dynamics' && tok.dynamics) {
+            emitDynamicsDirection(out, tok.dynamics);
           } else if (tok.kind === 'rest') {
             emitRest(out, tok, tupletScale);
           } else if (tok.kind === 'note') {
@@ -280,6 +284,28 @@ function emitTempoDirection(out: string[], bpm: number): void {
   out.push('      </direction>');
 }
 
+function emitDynamicsDirection(out: string[], dynamics: string): void {
+  if (dynamics === '<' || dynamics === '>' || dynamics === '/') {
+    out.push('      <direction placement="below">');
+    out.push('        <direction-type>');
+    if (dynamics === '<') {
+      out.push('          <wedge type="crescendo"/>');
+    } else if (dynamics === '>') {
+      out.push('          <wedge type="diminuendo"/>');
+    } else {
+      out.push('          <wedge type="stop"/>');
+    }
+    out.push('        </direction-type>');
+    out.push('      </direction>');
+  } else {
+    out.push('      <direction placement="below">');
+    out.push('        <direction-type>');
+    out.push(`          <dynamics><${dynamics}/></dynamics>`);
+    out.push('        </direction-type>');
+    out.push('      </direction>');
+  }
+}
+
 /**
  * 小節バーラインを MusicXML `<barline>` 要素として出力する。
  *
@@ -310,6 +336,40 @@ function emitBarline(out: string[], style: HideBarlineStyle, location: 'left' | 
       out.push('        <bar-style>light-heavy</bar-style>');
       out.push('        <repeat direction="backward"/>');
       break;
+  }
+  out.push('      </barline>');
+}
+
+function emitBarlineWithVolta(
+  out: string[],
+  style: HideBarlineStyle | undefined,
+  location: 'left' | 'right',
+  voltaNumber?: number,
+): void {
+  out.push(`      <barline location="${location}">`);
+  if (style) {
+    switch (style) {
+      case 'single':
+        out.push('        <bar-style>regular</bar-style>');
+        break;
+      case 'double':
+        out.push('        <bar-style>light-light</bar-style>');
+        break;
+      case 'final':
+        out.push('        <bar-style>light-heavy</bar-style>');
+        break;
+      case 'repeatStart':
+        out.push('        <bar-style>heavy-light</bar-style>');
+        out.push('        <repeat direction="forward"/>');
+        break;
+      case 'repeatEnd':
+        out.push('        <bar-style>light-heavy</bar-style>');
+        out.push('        <repeat direction="backward"/>');
+        break;
+    }
+  }
+  if (voltaNumber !== undefined) {
+    out.push(`        <ending number="${voltaNumber}" type="start"/>`);
   }
   out.push('      </barline>');
 }
@@ -429,10 +489,15 @@ function bucketize(
       continue;
     }
     if (tok.kind === 'meta') {
-      if (tok.type === 'tempo') {
+      if (tok.type === 'tempo' || tok.type === 'dynamics') {
         // 現在の bucket に inline で挿入
         let bucket = measures[measures.length - 1];
         bucket.tokens.push(tok);
+        continue;
+      }
+      if (tok.type === 'volta' && tok.voltaNumber !== undefined) {
+        let bucket = measures[measures.length - 1];
+        bucket.voltaNumber = tok.voltaNumber;
         continue;
       }
       if (tok.type === 'time' && tok.timeNum !== undefined && tok.timeDen !== undefined) {
@@ -465,6 +530,12 @@ function bucketize(
       continue;
     }
     // note / rest
+    // 装飾音 (grace) は演奏時間 0 — bucket 計算に参加しない
+    if (tok.kind === 'note' && tok.graceType) {
+      let bucket = measures[measures.length - 1];
+      bucket.tokens.push(tok);
+      continue;
+    }
     const dur = getEmittedDuration(tok, tupletScale);
     let bucket = measures[measures.length - 1];
     const remaining = bucket.unitsPerMeasure - bucket.totalUnits;
@@ -626,13 +697,20 @@ function emitNote(
     const ruleB = applyRuleB(p, keyFifths, measureMemory);
 
     out.push('      <note>');
+    if (tok.graceType) {
+      out.push(tok.graceType === 'acciaccatura'
+        ? '        <grace slash="yes"/>'
+        : '        <grace/>');
+    }
     if (i > 0) out.push('        <chord/>');
     out.push('        <pitch>');
     out.push(`          <step>${p.step}</step>`);
     if (ruleB.needAlter) out.push(`          <alter>${ruleB.displayAlter}</alter>`);
     out.push(`          <octave>${p.octave}</octave>`);
     out.push('        </pitch>');
-    out.push(`        <duration>${emittedDur}</duration>`);
+    if (!tok.graceType) {
+      out.push(`        <duration>${emittedDur}</duration>`);
+    }
     out.push('        <voice>1</voice>');
     out.push(`        <type>${noteType}</type>`);
     for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
@@ -653,8 +731,11 @@ function emitNote(
       out.push('        <tie type="start"/>');
     }
 
+    const hasArticulations = tok.staccato || tok.accent || tok.tenuto || tok.marcato;
+    const hasOrnaments = tok.trill || tok.fermata;
     const wantNotations = isFirstChordNote && (
-      tok.staccato || tok.slurStart || tok.tieToNext || tok.tieFromPrev ||
+      hasArticulations || hasOrnaments ||
+      tok.slurStart || tok.slurEnd || tok.tieToNext || tok.tieFromPrev ||
       tupletStartStop.start || tupletStartStop.stop
     );
     if (wantNotations) {
@@ -668,14 +749,28 @@ function emitNote(
       if (tok.slurStart) {
         out.push('          <slur type="start" number="1"/>');
       }
+      if (tok.slurEnd) {
+        out.push('          <slur type="stop" number="1"/>');
+      }
       if (tupletStartStop.start) {
         out.push('          <tuplet type="start" number="1"/>');
       }
       if (tupletStartStop.stop) {
         out.push('          <tuplet type="stop" number="1"/>');
       }
-      if (tok.staccato) {
-        out.push('          <articulations><staccato/></articulations>');
+      if (tok.fermata) {
+        out.push('          <fermata type="upright"/>');
+      }
+      if (hasArticulations) {
+        out.push('          <articulations>');
+        if (tok.staccato) out.push('            <staccato/>');
+        if (tok.accent) out.push('            <accent/>');
+        if (tok.tenuto) out.push('            <tenuto/>');
+        if (tok.marcato) out.push('            <strong-accent type="up"/>');
+        out.push('          </articulations>');
+      }
+      if (tok.trill) {
+        out.push('          <ornaments><trill-mark/></ornaments>');
       }
       out.push('        </notations>');
     }

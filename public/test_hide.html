@@ -52,25 +52,48 @@
     .pass { color: #0f6; font-weight: bold; }
     .fail { color: #f44; font-weight: bold; }
     .warning { color: #fc6; }
-    .osmd-container {
+    .render-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 8px;
+    }
+    .render-col { display: flex; flex-direction: column; min-width: 0; }
+    .vex-container, .osmd-container {
       background: #fff;
       border: 1px solid #ddd;
       border-radius: 4px;
       padding: 10px;
-      min-height: 200px;
+      min-height: 140px;
+      overflow: auto;
     }
+    .vex-container { border-color: #6c5ce7; }
+    .osmd-container { border-color: #00b894; }
+    .render-col-label {
+      font-size: 0.78em;
+      font-weight: 600;
+      margin-bottom: 4px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      align-self: flex-start;
+    }
+    .vex-label  { color: #6c5ce7; background: #efebff; }
+    .osmd-label { color: #00b894; background: #e6f7f1; }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.7/build/opensheetmusicdisplay.min.js"></script>
 </head>
 <body>
   <h1>.hide コンパイラ動作確認 (v1.9 matrix mode)</h1>
   <p>
-    ① compileHide() で MusicXML を生成し OSMD で描画 (stream mode v1.8)。<br>
+    ① compileHide() で MusicXML を生成 (stream mode v1.8)。<br>
     ② analyzeMatrix() で grid-aligned 多声構造を解析 (matrix mode v1.9)。<br>
     ③ classifyChord() で triad/seventh コード分類。<br>
     ④ musicXmlToHide() で MusicXML → .hide 逆変換 round-trip (Bach corpus 取り込み用)。<br>
     ⑤ <code>.</code> 系小節終止語彙 (<code>.</code>=単縦線, <code>..</code>=複縦線, <code>...</code>=終止線,
-       <code>.:</code>=繰り返し開始, <code>:.</code>=繰り返し終わり) — stream/reverse/OMR 三者で一貫する end-of-measure マーカー。
+       <code>.:</code>=繰り返し開始, <code>:.</code>=繰り返し終わり) — stream/reverse/OMR 三者で一貫する end-of-measure マーカー。<br>
+    <strong>描画は 2 系統 並列:</strong>
+    <span style="color:#6c5ce7">紫=VexFlow (analyzeMatrix → 直接描画)</span> /
+    <span style="color:#00b894">緑=OSMD (compileHide → MusicXML → 描画)</span>
   </p>
   <div id="root"></div>
 
@@ -86,6 +109,7 @@
       analyzeVoiceLeading,
       musicXmlToHide,
     } from '/src/index.ts';
+    import { renderHideMatrix } from '/hideToVexflow.js';
 
     const root = document.getElementById('root');
 
@@ -148,6 +172,22 @@
       return 0;
     }
 
+    /**
+     * .hide ソースから VexFlow で直接描画する。
+     * 内部で analyzeMatrix() を呼び、その matrix を renderHideMatrix() に渡す。
+     * 失敗時はエラーメッセージ文字列を返す (成功時は null)。
+     */
+    function renderVex(container, source) {
+      try {
+        const { matrix } = analyzeMatrix(source);
+        renderHideMatrix(container, matrix);
+        return null;
+      } catch (e) {
+        return e.message || String(e);
+      }
+    }
+
+    /** OSMD で MusicXML を描画 */
     async function renderOsmd(container, xml) {
       try {
         const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(container, {
@@ -162,6 +202,40 @@
       } catch (e) {
         return e.message || String(e);
       }
+    }
+
+    /**
+     * 楽譜カードに「VexFlow | OSMD」の 2 列レイアウトを追加し、両方の描画を返す。
+     * 描画自体はこの関数の呼び出し元で行う (DOM 追加 → 描画 の順序を守るため)。
+     */
+    function appendRenderRow(card) {
+      const row = document.createElement('div');
+      row.className = 'render-row';
+
+      const vexCol = document.createElement('div');
+      vexCol.className = 'render-col';
+      const vexLabel = document.createElement('div');
+      vexLabel.className = 'render-col-label vex-label';
+      vexLabel.textContent = 'VexFlow (analyzeMatrix → renderHideMatrix)';
+      vexCol.appendChild(vexLabel);
+      const vexBox = document.createElement('div');
+      vexBox.className = 'vex-container';
+      vexCol.appendChild(vexBox);
+
+      const osmdCol = document.createElement('div');
+      osmdCol.className = 'render-col';
+      const osmdLabel = document.createElement('div');
+      osmdLabel.className = 'render-col-label osmd-label';
+      osmdLabel.textContent = 'OSMD (compileHide → MusicXML)';
+      osmdCol.appendChild(osmdLabel);
+      const osmdBox = document.createElement('div');
+      osmdBox.className = 'osmd-container';
+      osmdCol.appendChild(osmdBox);
+
+      row.appendChild(vexCol);
+      row.appendChild(osmdCol);
+      card.appendChild(row);
+      return { vexBox, osmdBox };
     }
 
     const cases = [
@@ -702,20 +776,31 @@
       xmlBox.textContent = result.musicXml;
       card.appendChild(xmlBox);
 
-      // OSMD 描画
-      const osmdLabel = document.createElement('div');
-      osmdLabel.className = 'label';
-      osmdLabel.style.marginTop = '8px';
-      osmdLabel.textContent = 'OSMD 描画:';
-      card.appendChild(osmdLabel);
+      // VexFlow + OSMD を 2 カラムで並べる
+      const renderRowLabel = document.createElement('div');
+      renderRowLabel.className = 'label';
+      renderRowLabel.style.marginTop = '8px';
+      renderRowLabel.textContent = '描画 (左: VexFlow direct / 右: OSMD via MusicXML):';
+      card.appendChild(renderRowLabel);
 
-      const osmdContainer = document.createElement('div');
-      osmdContainer.className = 'osmd-container';
-      card.appendChild(osmdContainer);
+      const { vexBox, osmdBox } = appendRenderRow(card);
 
       root.appendChild(card);
 
-      const osmdErr = await renderOsmd(osmdContainer, result.musicXml);
+      // VexFlow (DOM 追加後に描画 — container 幅が確定してから)
+      const vexErr = renderVex(vexBox, tc.source);
+      if (vexErr) {
+        const errLine = fail(`VexFlow render failed: ${vexErr}`);
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(errLine);
+      } else {
+        const okLine = pass('VexFlow render success');
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(okLine);
+      }
+
+      // OSMD (async)
+      const osmdErr = await renderOsmd(osmdBox, result.musicXml);
       if (osmdErr) {
         const errLine = fail(`OSMD render failed: ${osmdErr}`);
         summary.appendChild(document.createTextNode('\n'));
@@ -725,7 +810,8 @@
         const okLine = pass('OSMD render success');
         summary.appendChild(document.createTextNode('\n'));
         summary.appendChild(okLine);
-        if (checks.every(c => c.className !== 'fail')) {
+        if (checks.every(c => c.className !== 'fail') &&
+            summary.querySelectorAll('.fail').length === 0) {
           totalPass++;
         } else {
           totalFail++;
@@ -734,7 +820,7 @@
     }
 
     // ============================================================
-    // Matrix mode tests (analyzeMatrix を直接叩く / OSMD は使わない)
+    // Matrix mode tests (analyzeMatrix を直接叩く / 描画なし、構造のみ検証)
     // ============================================================
     function pitchToString(p) {
       const accStr = p.alter === 1 ? '#' : (p.alter === -1 ? 'b' : '');
@@ -1255,9 +1341,9 @@
     // v1.9 Round-trip tests (musicXmlToHide: MusicXML → .hide → MusicXML)
     // ============================================================
     // 元 .hide → compileHide → MusicXML(forward) → musicXmlToHide → .hide(reconstructed)
-    //                                          → compileHide → MusicXML(round-trip)
-    // 両方の MusicXML を OSMD で描画して目視で比較する。
-    // 完全な文字列同一性は要求しない (元が stream form でも戻りは grid form なので)。
+    //                                          → compileHide → MusicXML(round-trip 検証用)
+    // 元 .hide / 復元 .hide それぞれを analyzeMatrix → renderHideMatrix で VexFlow 描画し
+    // 目視比較する。完全な文字列同一性は要求しない (元が stream form でも戻りは grid form なので)。
     const roundTripCases = [
       {
         name: 'R① 4声 grid form (全音符/小節 × 3小節)',
@@ -1453,50 +1539,63 @@
       fwdXmlBox.textContent = forwardXml;
       card.appendChild(fwdXmlBox);
 
-      // OSMD: forward (元 .hide からの MusicXML)
-      const fwdOsmdLabel = document.createElement('div');
-      fwdOsmdLabel.className = 'label';
-      fwdOsmdLabel.style.marginTop = '8px';
-      fwdOsmdLabel.textContent = 'OSMD: forward (元 .hide → MusicXML):';
-      card.appendChild(fwdOsmdLabel);
-      const fwdOsmd = document.createElement('div');
-      fwdOsmd.className = 'osmd-container';
-      card.appendChild(fwdOsmd);
+      // forward render row (元 .hide)
+      const fwdLabel = document.createElement('div');
+      fwdLabel.className = 'label';
+      fwdLabel.style.marginTop = '8px';
+      fwdLabel.textContent = 'forward 描画 (元 .hide):';
+      card.appendChild(fwdLabel);
+      const { vexBox: fwdVex, osmdBox: fwdOsmd } = appendRenderRow(card);
 
-      // OSMD: round-trip (復元 .hide → MusicXML)
-      let rtOsmdLabel, rtOsmd;
-      if (roundTripXml) {
-        rtOsmdLabel = document.createElement('div');
-        rtOsmdLabel.className = 'label';
-        rtOsmdLabel.style.marginTop = '8px';
-        rtOsmdLabel.textContent = 'OSMD: round-trip (復元 .hide → MusicXML):';
-        card.appendChild(rtOsmdLabel);
-        rtOsmd = document.createElement('div');
-        rtOsmd.className = 'osmd-container';
-        card.appendChild(rtOsmd);
-      }
+      // round-trip render row (復元 .hide)
+      const rtLabel = document.createElement('div');
+      rtLabel.className = 'label';
+      rtLabel.style.marginTop = '8px';
+      rtLabel.textContent = 'round-trip 描画 (musicXmlToHide で復元した .hide):';
+      card.appendChild(rtLabel);
+      const { vexBox: rtVex, osmdBox: rtOsmd } = appendRenderRow(card);
 
       root.appendChild(card);
 
-      // 描画 (DOM 追加後でないと OSMD が container サイズを取れない)
-      const fwdErr = await renderOsmd(fwdOsmd, forwardXml);
-      if (fwdErr) {
-        const fl = fail(`forward OSMD render failed: ${fwdErr}`);
+      // 描画 (DOM 追加後)
+      const fwdVexErr = renderVex(fwdVex, tc.source);
+      if (fwdVexErr) {
+        const fl = fail(`forward VexFlow failed: ${fwdVexErr}`);
         summary.appendChild(document.createTextNode('\n'));
         summary.appendChild(fl);
       } else {
-        const ok = pass('forward OSMD render success');
+        const ok = pass('forward VexFlow success');
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(ok);
+      }
+      const fwdOsmdErr = await renderOsmd(fwdOsmd, forwardXml);
+      if (fwdOsmdErr) {
+        const fl = fail(`forward OSMD failed: ${fwdOsmdErr}`);
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(fl);
+      } else {
+        const ok = pass('forward OSMD success');
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(ok);
+      }
+      const rtVexErr = renderVex(rtVex, reconstructedHide);
+      if (rtVexErr) {
+        const fl = fail(`round-trip VexFlow failed: ${rtVexErr}`);
+        summary.appendChild(document.createTextNode('\n'));
+        summary.appendChild(fl);
+      } else {
+        const ok = pass('round-trip VexFlow success');
         summary.appendChild(document.createTextNode('\n'));
         summary.appendChild(ok);
       }
       if (roundTripXml) {
-        const rtErr = await renderOsmd(rtOsmd, roundTripXml);
-        if (rtErr) {
-          const fl = fail(`round-trip OSMD render failed: ${rtErr}`);
+        const rtOsmdErr = await renderOsmd(rtOsmd, roundTripXml);
+        if (rtOsmdErr) {
+          const fl = fail(`round-trip OSMD failed: ${rtOsmdErr}`);
           summary.appendChild(document.createTextNode('\n'));
           summary.appendChild(fl);
         } else {
-          const ok = pass('round-trip OSMD render success');
+          const ok = pass('round-trip OSMD success');
           summary.appendChild(document.createTextNode('\n'));
           summary.appendChild(ok);
         }

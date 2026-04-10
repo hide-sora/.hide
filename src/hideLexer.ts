@@ -346,6 +346,32 @@ export function tokenize(source: string): HideLexResult {
       continue;
     }
 
+    // 装飾音プレフィックス `~` / `~~` + 音符
+    if (c === '~') {
+      let graceType: 'grace' | 'acciaccatura' = 'grace';
+      let gi = i + 1;
+      if (gi < source.length && source[gi] === '~') {
+        graceType = 'acciaccatura';
+        gi++;
+      }
+      // 直後が音符パターンなら装飾音
+      if (gi < source.length && /[A-Ga-g]/.test(source[gi])) {
+        const result = tryParseNote(source, gi, header.div);
+        if (result) {
+          result.token.graceType = graceType;
+          tokens.push(result.token);
+          positions.push(startPos);
+          i = result.nextOffset;
+          continue;
+        }
+      }
+      // 音符パターン不一致 → 歌詞扱い
+      tokens.push({ kind: 'lyric', text: c });
+      positions.push(startPos);
+      i++;
+      continue;
+    }
+
     // 音符 (3-4文字パターン、和音可)
     if (/[A-Ga-g]/.test(c)) {
       const result = tryParseNote(source, i, header.div);
@@ -791,6 +817,30 @@ function parseMetaCommand(
     throw new HideParseError(`不正な調指定: [${inner}]`, pos, source);
   }
 
+  // [V1] [V2] ... — volta (N番括弧)
+  if (head === 'V') {
+    const numStr = inner.slice(1);
+    if (/^\d+$/.test(numStr)) {
+      return { kind: 'meta', type: 'volta', voltaNumber: parseInt(numStr, 10) };
+    }
+    throw new HideParseError(`不正な Volta 指定: [${inner}]`, pos, source);
+  }
+
+  // [Dp] [Df] [Dff] [Dmf] etc. — dynamics (強弱記号)
+  // [D<] crescendo, [D>] diminuendo, [D/] wedge stop
+  if (head === 'D') {
+    const dynValue = inner.slice(1);
+    const validDynamics = [
+      'pppp', 'ppp', 'pp', 'p', 'mp', 'mf', 'f', 'ff', 'fff', 'ffff',
+      'fp', 'fz', 'sf', 'sfz', 'sffz', 'sfp', 'sfpp', 'rfz', 'rf',
+      '<', '>', '/',
+    ];
+    if (validDynamics.includes(dynValue)) {
+      return { kind: 'meta', type: 'dynamics', dynamics: dynValue };
+    }
+    throw new HideParseError(`不正な強弱記号: [${inner}]`, pos, source);
+  }
+
   // パート切替の一般ルール (v1.9):
   //   [] の中身が「数字のみ」または「P のみ」 → 新パート
   //   - [1] [2] ... [N] = 任意人数アカペラの番号付きボーカルパート
@@ -885,6 +935,20 @@ function tryParseNote(
         }
       }
       const durationUnits = dots === 2 ? baseUnits * 1.75 : dots === 1 ? baseUnits * 1.5 : baseUnits;
+      // アーティキュレーション・装飾サフィックス: > - ~ ^ * _
+      let accent = false, tenuto = false, fermata = false, marcato = false, trill = false, slurEnd = false;
+      let scanning = true;
+      while (scanning && i < source.length) {
+        switch (source[i]) {
+          case '>': accent = true; i++; break;
+          case '-': tenuto = true; i++; break;
+          case '~': fermata = true; i++; break;
+          case '^': marcato = true; i++; break;
+          case '*': trill = true; i++; break;
+          case '_': slurEnd = true; i++; break;
+          default: scanning = false;
+        }
+      }
       return {
         token: {
           kind: 'note',
@@ -892,7 +956,13 @@ function tryParseNote(
           durationUnits: Math.round(durationUnits),
           dots,
           staccato,
+          accent,
+          tenuto,
+          fermata,
+          marcato,
+          trill,
           slurStart,
+          slurEnd,
           tieToNext: false,
         },
         nextOffset: i,

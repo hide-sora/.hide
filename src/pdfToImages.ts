@@ -19,6 +19,8 @@ export interface PdfToImagesOptions {
   dpi?: number;
   /** 最大ページ数 (default: 制限なし) */
   maxPages?: number;
+  /** ページ単位の進捗コールバック */
+  onPageRendered?: (pageIndex: number, totalPages: number) => void;
 }
 
 export interface PdfToImagesResult {
@@ -49,10 +51,19 @@ export async function pdfToImages(
   const scale = dpi / 72; // PDF standard = 72 DPI
 
   // Dynamic import to keep pdfjs-dist optional
-  const pdfjsLib = await import('pdfjs-dist');
+  // Use legacy build in Node.js (no DOMMatrix/OffscreenCanvas polyfill needed)
+  const isNode = typeof globalThis.document === 'undefined';
+  const pdfjsLib = isNode
+    ? await import('pdfjs-dist/legacy/build/pdf.mjs')
+    : await import('pdfjs-dist');
+
+  // pdfjs-dist v5 rejects Buffer — always create a plain Uint8Array
+  const bytes = pdfData instanceof ArrayBuffer
+    ? new Uint8Array(pdfData)
+    : new Uint8Array(pdfData);
 
   const doc = await pdfjsLib.getDocument({
-    data: pdfData instanceof ArrayBuffer ? new Uint8Array(pdfData) : pdfData,
+    data: bytes,
     useSystemFonts: true,
     // Disable worker for Node.js simplicity
     isEvalSupported: false,
@@ -71,22 +82,24 @@ export async function pdfToImages(
     const width = Math.floor(viewport.width);
     const height = Math.floor(viewport.height);
 
-    // Use OffscreenCanvas (Node 20+ / browser)
+    // Create canvas: OffscreenCanvas (browser) or @napi-rs/canvas (Node.js)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let canvas: any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const OC = (globalThis as any).OffscreenCanvas;
-    if (!OC) {
-      throw new Error(
-        'pdfToImages requires OffscreenCanvas (Node 20+ or browser). ' +
-        'For older Node, use pdfToImagesFromFile() with canvas package.',
-      );
+    if (OC) {
+      canvas = new OC(width, height);
+    } else {
+      // Node.js: use @napi-rs/canvas (bundled with pdfjs-dist)
+      const { createCanvas } = await import('@napi-rs/canvas');
+      canvas = createCanvas(width, height);
     }
-    const canvas = new OC(width, height);
     const ctx = canvas.getContext('2d')!;
 
     await page.render({
       canvasContext: ctx,
       viewport,
-      canvas: canvas,
+      canvas,
     } as Parameters<typeof page.render>[0]).promise;
 
     const imageData = ctx.getImageData(0, 0, width, height);
@@ -98,11 +111,20 @@ export async function pdfToImages(
     images.push(image);
 
     // Generate base64 PNG for LLM prompts
-    const blob = await canvas.convertToBlob({ type: 'image/png' });
-    const arrayBuf = await blob.arrayBuffer();
-    const b64 = bufferToBase64(new Uint8Array(arrayBuf));
+    let b64: string;
+    if (OC) {
+      // Browser: OffscreenCanvas.convertToBlob
+      const blob = await canvas.convertToBlob({ type: 'image/png' });
+      const arrayBuf = await blob.arrayBuffer();
+      b64 = bufferToBase64(new Uint8Array(arrayBuf));
+    } else {
+      // Node.js: @napi-rs/canvas .toBuffer('image/png')
+      const pngBuf: Buffer = canvas.toBuffer('image/png');
+      b64 = pngBuf.toString('base64');
+    }
     base64Pages.push({ base64: b64, mediaType: 'image/png' });
 
+    opts.onPageRendered?.(i - 1, pageCount);
     page.cleanup();
   }
 

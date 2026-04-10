@@ -6,9 +6,12 @@
  *
  * 機能:
  *  - beat 単位 + note-onset 単位の時間分解コード分析
- *  - 拡張コードテンプレート (sus4, sus2, 6, m6, 7sus4, aug7)
+ *  - 拡張コードテンプレート (sus4, sus2, 6, m6, 7sus4, aug7, add9, madd9)
  *  - 転回形の番号付け (第1/第2/第3転回)
  *  - ON コード検出 (バス音が構成音でない)
+ *  - fill-5th: 省略された完全5度を補ってコード推定 → (o5) 表記
+ *  - confidence/alternatives: 判定の確信度と代替解釈
+ *  - progression context: 前後のコード進行から曖昧コードを解消
  *  - ローマ数字 (度数) 表記 (KEY ヘッダーから算出)
  *  - 複合表記 (Ⅲ7/E7)
  *  - [C] 行テキスト生成 (ChordName_Duration 記法)
@@ -18,6 +21,8 @@
  *  - `_` の左 = コード名 (root + quality), 右 = duration (h/i/j/k/l/m)
  *  - degree prefix: `Ⅰ/ C_m` (小節の構造 degree)
  *  - ON コード: `C/E_k` (C major with E bass, 四分)
+ *  - ambiguous: `Am7~C6_k` (Am7 or C6, 四分)
+ *  - omitted 5th: `CM7(o5)_m` (Cmaj7 with omitted 5th, 全音符)
  */
 
 import type { HidePitch, HideToken, HideNoteToken } from './hideTypes';
@@ -27,11 +32,12 @@ import type { HideMatrix, HideMatrixCell, HideMatrixMeasure } from './hideMatrix
 // 公開型
 // ============================================================
 
-/** 拡張和音種別 (core の ChordQuality + sus/6 系) */
+/** 拡張和音種別 (core の ChordQuality + sus/6/add9 系) */
 export type ChordQualityEx =
   | 'maj' | 'min' | 'dim' | 'aug'
   | 'maj7' | 'dom7' | 'min7' | 'm7b5' | 'dim7' | 'minMaj7'
-  | 'sus4' | 'sus2' | '6' | 'm6' | '7sus4' | 'aug7';
+  | 'sus4' | 'sus2' | '6' | 'm6' | '7sus4' | 'aug7'
+  | 'add9' | 'madd9';
 
 /** 拡張コードシンボル */
 export interface ChordSymbol {
@@ -53,6 +59,12 @@ export interface ChordSymbol {
   relative: string;
   /** 複合表記 ("Ⅰ/C", "Ⅴ7/G7/F3") */
   combined: string;
+  /** 判定の確信度 */
+  confidence: 'definite' | 'likely' | 'ambiguous' | 'incomplete';
+  /** 代替解釈 (ambiguous 時に提示) */
+  alternatives: ChordSymbol[];
+  /** 5th 省略推定で復元した場合 true */
+  omittedFifth: boolean;
 }
 
 /** Note-onset 時点のスナップショット */
@@ -124,6 +136,7 @@ const QUALITY_DISPLAY: Record<ChordQualityEx, string> = {
   'dim7': 'dim7', 'minMaj7': 'mM7',
   'sus4': 'sus4', 'sus2': 'sus2', '6': '6', 'm6': 'm6',
   '7sus4': '7sus4', 'aug7': 'aug7',
+  'add9': 'add9', 'madd9': 'madd9',
 };
 
 /** 三和音テンプレート (拡張) */
@@ -136,7 +149,7 @@ const TRIAD_TEMPLATES: { quality: ChordQualityEx; intervals: number[] }[] = [
   { quality: 'aug',  intervals: [0, 4, 8] },
 ];
 
-/** 四和音テンプレート (拡張: 6/m6 を 7th 系の前に置いてバス優先解決を促す) */
+/** 四和音テンプレート (拡張: 6/m6 → 7th 系 → add9 系) */
 const FOUR_NOTE_TEMPLATES: { quality: ChordQualityEx; intervals: number[] }[] = [
   { quality: '6',       intervals: [0, 4, 7, 9] },
   { quality: 'm6',      intervals: [0, 3, 7, 9] },
@@ -148,6 +161,13 @@ const FOUR_NOTE_TEMPLATES: { quality: ChordQualityEx; intervals: number[] }[] = 
   { quality: 'minMaj7', intervals: [0, 3, 7, 11] },
   { quality: '7sus4',   intervals: [0, 5, 7, 10] },
   { quality: 'aug7',    intervals: [0, 4, 8, 10] },
+  { quality: 'add9',    intervals: [0, 2, 4, 7] },
+  { quality: 'madd9',   intervals: [0, 2, 3, 7] },
+];
+
+/** 七の和音 quality (構造的に優先される) */
+const SEVENTH_QUALITIES: ChordQualityEx[] = [
+  'maj7', 'dom7', 'min7', 'm7b5', 'dim7', 'minMaj7', 'aug7',
 ];
 
 // ============================================================
@@ -156,6 +176,9 @@ const FOUR_NOTE_TEMPLATES: { quality: ChordQualityEx; intervals: number[] }[] = 
 
 /**
  * Matrix 全体をコード分析する。
+ *
+ * 1st pass: 各小節を独立にコード分析 (beat/onset 単位)
+ * 2nd pass: 前後のコード進行コンテキストから ambiguous コードを解消
  *
  * @param matrix analyzeMatrix() の出力
  * @returns beat 単位 / onset 単位の分析 + [C] セルテキスト
@@ -168,10 +191,14 @@ export function analyzeChords(matrix: HideMatrix): ChordAnalysisResult {
   const timeDen = matrix.header.timeDen;
   const unitsPerBeat = Math.round(div / timeDen);
 
+  // 1st pass: 各小節を独立に分析
   const measures: MeasureAnalysis[] = [];
   for (const m of matrix.measures) {
     measures.push(analyzeMeasure(matrix, m, keyRootPc, unitsPerBeat, div));
   }
+
+  // 2nd pass: progression context で ambiguous を解消
+  resolveProgression(measures, keyRootPc, unitsPerBeat, div);
 
   return { measures, keyRoot, keyFifths };
 }
@@ -180,9 +207,11 @@ export function analyzeChords(matrix: HideMatrix): ChordAnalysisResult {
  * ピッチ配列を拡張コードとして分類する。
  *
  * hideChord.ts の classifyChord を拡張し、以下を追加:
- *  - sus4/sus2/6/m6/7sus4/aug7 テンプレート
+ *  - sus4/sus2/6/m6/7sus4/aug7/add9/madd9 テンプレート
  *  - 転回形番号付け (0-3)
  *  - ON コード検出 (バス非構成音)
+ *  - fill-5th: 省略された完全5度を補って四和音マッチ
+ *  - confidence/alternatives: 判定確信度と代替解釈
  *  - ローマ数字度数 (keyRootPc 基準)
  *  - 5+ ピッチクラスの縮約マッチ
  *
@@ -203,36 +232,45 @@ export function classifyChordEx(
   const pcSet = uniqueSortedPcSet(pitches);
   if (pcSet.length < 2) return null;
 
-  // 3-4 pc: 直接マッチ
+  // 3-4 pc: 直接マッチ (全候補を収集して confidence 判定)
   if (pcSet.length >= 3 && pcSet.length <= 4) {
-    const result = matchPcSet(pcSet, bassPc, keyRootPc);
-    if (result) return result;
+    const all = matchPcSetAll(pcSet, bassPc, keyRootPc);
+    if (all.length > 0) {
+      const confidence = all.length === 1 ? 'definite' : 'ambiguous' as const;
+      return withConfidence(all[0], all.slice(1), confidence);
+    }
   }
 
-  // 5+ pc: 1音ずつ除いて 4pc にマッチ
+  // 5+ pc: 1音ずつ除いて 4pc にマッチ (7th 優先)
   if (pcSet.length >= 5) {
     const result = tryReduceToFour(pcSet, bassPc, keyRootPc);
-    if (result) return result;
+    if (result) return withConfidence(result, [], 'likely');
+  }
+
+  // fill-5th: 3pc で三和音不一致 → 完全5度を補って四和音マッチ
+  if (pcSet.length === 3) {
+    const result = tryFillFifth(pcSet, bassPc, keyRootPc);
+    if (result) return result; // confidence = 'incomplete', omittedFifth = true
   }
 
   // ON コード: バスを除いて残りでマッチ (reduce-to-3 より優先)
   if (pcSet.length >= 3) {
     const result = tryOnChord(pcSet, bassPc, keyRootPc);
-    if (result) return result;
+    if (result) return withConfidence(result, [], 'likely');
   }
 
   // 4+ pc で 4pc 不一致: 1音除いて 3pc にマッチ (最終手段)
   if (pcSet.length >= 4) {
     const result = tryReduceToThree(pcSet, bassPc, keyRootPc);
-    if (result) return result;
+    if (result) return withConfidence(result, [], 'likely');
   }
 
   // dyad (2 pc): パワーコード検出 (完全5度 = interval 7)
   if (pcSet.length === 2) {
     const interval = ((pcSet[1] - pcSet[0]) % 12 + 12) % 12;
     if (interval === 7) {
-      // root = lower note
-      return buildChordSymbol(pcSet[0], 'maj', bassPc, [0, 7], keyRootPc, false);
+      const sym = buildChordSymbol(pcSet[0], 'maj', bassPc, [0, 7], keyRootPc, false);
+      return withConfidence(sym, [], 'incomplete');
     }
   }
 
@@ -254,16 +292,17 @@ export function formatCRow(result: ChordAnalysisResult, matrix: HideMatrix): str
 // ============================================================
 
 /**
- * pcSet をテンプレートにマッチさせる。バス優先ルート解決。
+ * pcSet をテンプレートにマッチさせ、全候補を返す。バス優先ルート解決。
  */
-function matchPcSet(
+function matchPcSetAll(
   pcSet: number[],
   bassPc: number,
   keyRootPc: number,
-): ChordSymbol | null {
+): ChordSymbol[] {
   const templates = pcSet.length === 3 ? TRIAD_TEMPLATES : FOUR_NOTE_TEMPLATES;
-  // ルート候補: バス優先、残りは pcSet 順
   const rootCandidates = [bassPc, ...pcSet.filter(p => p !== bassPc)];
+  const results: ChordSymbol[] = [];
+  const seen = new Set<string>();
 
   for (const root of rootCandidates) {
     const rotated = pcSet
@@ -271,29 +310,55 @@ function matchPcSet(
       .sort((a, b) => a - b);
     for (const tpl of templates) {
       if (intervalsEqual(rotated, tpl.intervals)) {
-        return buildChordSymbol(root, tpl.quality, bassPc, tpl.intervals, keyRootPc, false);
+        const sym = buildChordSymbol(root, tpl.quality, bassPc, tpl.intervals, keyRootPc, false);
+        const key = `${sym.root}:${sym.quality}`;
+        if (!seen.has(key)) {
+          seen.add(key);
+          results.push(sym);
+        }
       }
     }
   }
-  return null;
+  return results;
 }
 
-/** 5+ pc → 非バス音を1つずつ除いて 4pc マッチを試行 */
+/**
+ * pcSet をテンプレートにマッチさせる。最初の一致を返す。
+ */
+function matchPcSet(
+  pcSet: number[],
+  bassPc: number,
+  keyRootPc: number,
+): ChordSymbol | null {
+  const all = matchPcSetAll(pcSet, bassPc, keyRootPc);
+  return all.length > 0 ? all[0] : null;
+}
+
+/** 5+ pc → 非バス音を1つずつ除いて 4pc マッチを試行 (7th 優先) */
 function tryReduceToFour(
   pcSet: number[],
   bassPc: number,
   keyRootPc: number,
 ): ChordSymbol | null {
+  const candidates: ChordSymbol[] = [];
   // 高い音から除去を試行 (テンションは高音に多い)
   for (let i = pcSet.length - 1; i >= 0; i--) {
     if (pcSet[i] === bassPc) continue;
     const reduced = [...pcSet.slice(0, i), ...pcSet.slice(i + 1)];
     if (reduced.length === 4) {
       const result = matchPcSet(reduced, bassPc, keyRootPc);
-      if (result) return result;
+      if (result) candidates.push(result);
     }
   }
-  return null;
+  if (candidates.length === 0) return null;
+  // 根音位置の7th を優先 (Cmaj9 → Cmaj7 > Cadd9)
+  const rootPos7th = candidates.find(
+    c => c.inversion === 0 && SEVENTH_QUALITIES.includes(c.quality),
+  );
+  if (rootPos7th) return rootPos7th;
+  const rootPos = candidates.find(c => c.inversion === 0);
+  if (rootPos) return rootPos;
+  return candidates[0];
 }
 
 /** 4+ pc → 非バス音を1つずつ除いて 3pc マッチを試行 */
@@ -346,6 +411,179 @@ function tryOnChord(
   );
 }
 
+/**
+ * fill-5th: 3pc で三和音テンプレートに不一致の場合、
+ * 各 pc を root 候補として完全5度 (root+7) を補い四和音マッチを試みる。
+ * 成功時は (o5) 付き・confidence='incomplete' で返す。
+ */
+function tryFillFifth(
+  pcSet: number[],
+  bassPc: number,
+  keyRootPc: number,
+): ChordSymbol | null {
+  const rootCandidates = [bassPc, ...pcSet.filter(p => p !== bassPc)];
+  for (const root of rootCandidates) {
+    const fifth = (root + 7) % 12;
+    if (pcSet.includes(fifth)) continue; // 5th already present
+    const extended = [...pcSet, fifth].sort((a, b) => a - b);
+    const rotated = extended
+      .map(x => ((x - root) % 12 + 12) % 12)
+      .sort((a, b) => a - b);
+    for (const tpl of FOUR_NOTE_TEMPLATES) {
+      if (intervalsEqual(rotated, tpl.intervals)) {
+        const sym = buildChordSymbol(root, tpl.quality, bassPc, tpl.intervals, keyRootPc, false);
+        sym.omittedFifth = true;
+        sym.confidence = 'incomplete';
+        // (o5) を absolute に付加
+        const qDisplay = QUALITY_DISPLAY[sym.quality];
+        const rootName = SEMITONE_NAMES[root];
+        const bassName = SEMITONE_NAMES[bassPc];
+        const absBase = rootName + qDisplay + '(o5)';
+        if (bassPc === root) {
+          sym.absolute = absBase;
+        } else if (sym.isOnChord) {
+          sym.absolute = `${absBase}/${bassName}`;
+        } else {
+          sym.absolute = `${absBase}/${bassName}${sym.inversion}`;
+        }
+        sym.combined = `${sym.relative}/${sym.absolute}`;
+        return sym;
+      }
+    }
+  }
+  return null;
+}
+
+// ============================================================
+// 内部: confidence ヘルパー
+// ============================================================
+
+/** ChordSymbol に confidence と alternatives を設定する */
+function withConfidence(
+  primary: ChordSymbol,
+  alternatives: ChordSymbol[],
+  confidence: ChordSymbol['confidence'],
+): ChordSymbol {
+  primary.confidence = confidence;
+  primary.alternatives = alternatives;
+  for (const alt of alternatives) {
+    alt.confidence = confidence;
+    alt.alternatives = [];
+  }
+  return primary;
+}
+
+// ============================================================
+// 内部: progression context (2nd pass)
+// ============================================================
+
+/**
+ * 2nd pass: 前後のコード進行コンテキストから ambiguous コードを解消する。
+ *
+ * ヒューリスティック:
+ * 1. 5度下行 (circle progression): 左→自→右 が 5度下行なら +3
+ * 2. 5度上行: +2
+ * 3. ステップモーション (2度): +1
+ * 4. ダイアトニック適合: +1
+ */
+function resolveProgression(
+  measures: MeasureAnalysis[],
+  keyRootPc: number,
+  unitsPerBeat: number,
+  div: number,
+): void {
+  for (let i = 0; i < measures.length; i++) {
+    const m = measures[i];
+    if (!m.summary || m.summary.confidence !== 'ambiguous' || m.summary.alternatives.length === 0) continue;
+
+    const left = i > 0 ? measures[i - 1].summary : null;
+    const right = i < measures.length - 1 ? measures[i + 1].summary : null;
+
+    // コンテキストがなければ解消不能
+    if (!left && !right) continue;
+
+    const candidates = [m.summary, ...m.summary.alternatives];
+    let bestScore = -Infinity;
+    let bestIdx = 0;
+
+    for (let ci = 0; ci < candidates.length; ci++) {
+      const c = candidates[ci];
+      const rootPc = SEMITONE_NAMES.indexOf(c.root as typeof SEMITONE_NAMES[number]);
+      let score = 0;
+
+      // 左隣からの根音移動を評価
+      if (left) {
+        const leftPc = SEMITONE_NAMES.indexOf(left.root as typeof SEMITONE_NAMES[number]);
+        const interval = ((rootPc - leftPc) % 12 + 12) % 12;
+        if (interval === 5) score += 3;  // 5度下行 (最も自然)
+        if (interval === 7) score += 2;  // 5度上行
+        if (interval === 2 || interval === 10) score += 1; // ステップ
+      }
+
+      // 右隣への根音移動を評価
+      if (right) {
+        const rightPc = SEMITONE_NAMES.indexOf(right.root as typeof SEMITONE_NAMES[number]);
+        const interval = ((rightPc - rootPc) % 12 + 12) % 12;
+        if (interval === 5) score += 3;  // 右へ5度下行
+        if (interval === 7) score += 2;  // 右へ5度上行
+        if (interval === 2 || interval === 10) score += 1;
+      }
+
+      // ダイアトニック適合
+      if (isDiatonic(rootPc, c.quality, keyRootPc)) score += 1;
+
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = ci;
+      }
+    }
+
+    // スコアが正で、かつ最良候補が現在の primary と異なる場合のみ解消
+    if (bestIdx !== 0 && bestScore > 0) {
+      const best = candidates[bestIdx];
+      const newAlternatives = candidates.filter((_, idx) => idx !== bestIdx);
+
+      // summary を差し替え
+      m.summary = withConfidence({ ...best }, newAlternatives, 'likely');
+
+      // beat/onset レベルも更新 (ambiguous だったものを差し替え)
+      for (const beat of m.beats) {
+        if (beat.primary && beat.primary.confidence === 'ambiguous') {
+          beat.primary = m.summary;
+        }
+        for (let oi = 0; oi < beat.onsets.length; oi++) {
+          if (beat.onsets[oi].chord && beat.onsets[oi].chord!.confidence === 'ambiguous') {
+            beat.onsets[oi].chord = m.summary;
+          }
+        }
+      }
+
+      // cellText を再生成
+      m.cellText = buildCellText(m.beats, m.summary, unitsPerBeat, div);
+    }
+  }
+}
+
+/** メジャーキーのダイアトニックコード判定 */
+function isDiatonic(rootPc: number, quality: ChordQualityEx, keyRootPc: number): boolean {
+  const degree = ((rootPc - keyRootPc) % 12 + 12) % 12;
+  const diatonic: Record<number, ChordQualityEx[]> = {
+    0:  ['maj', 'maj7', 'add9'],       // I
+    2:  ['min', 'min7', 'madd9'],      // ii
+    4:  ['min', 'min7'],               // iii
+    5:  ['maj', 'maj7', 'add9'],       // IV
+    7:  ['maj', 'dom7'],               // V
+    9:  ['min', 'min7', 'madd9'],      // vi
+    11: ['dim', 'm7b5'],              // vii
+  };
+  const allowed = diatonic[degree];
+  return allowed ? allowed.includes(quality) : false;
+}
+
+// ============================================================
+// 内部: ChordSymbol 構築
+// ============================================================
+
 /** ChordSymbol を組み立てる */
 function buildChordSymbol(
   rootPc: number,
@@ -391,6 +629,7 @@ function buildChordSymbol(
   return {
     root: rootName, quality, inversion, bass: bassName,
     isOnChord, degree, absolute, relative, combined,
+    confidence: 'definite', alternatives: [], omittedFifth: false,
   };
 }
 
@@ -628,8 +867,11 @@ function buildCellText(
   return degreePrefix + tokens.join(' ');
 }
 
-/** ChordSymbol → コード名文字列 ("C", "Cm7", "G7/B") */
+/** ChordSymbol → コード名文字列 (ambiguous 時は ~ 区切り) */
 function formatChordName(sym: ChordSymbol): string {
+  if (sym.confidence === 'ambiguous' && sym.alternatives.length > 0) {
+    return sym.absolute + '~' + sym.alternatives[0].absolute;
+  }
   return sym.absolute;
 }
 
