@@ -8,10 +8,13 @@ export default defineConfig({
   publicDir: 'public',
   server: {
     port: 4326,
-    open: '/public/test_hide.html',
+    open: '/test_hide_mini.html',
     fs: {
       allow: ['.', './node_modules'],
     },
+  },
+  optimizeDeps: {
+    exclude: ['@napi-rs/canvas', 'pdfjs-dist'],
   },
   build: {
     lib: {
@@ -22,8 +25,15 @@ export default defineConfig({
     },
     sourcemap: true,
     minify: false,
+    // tsc が先に dist/ に *.d.ts を出力するため、Vite には dist/ を空にしないよう指示する
+    // (デフォルトの emptyOutDir=true だと .d.ts が消えて consumer 側の型解決が失敗する)
+    emptyOutDir: false,
     rollupOptions: {
-      external: [],
+      external: ['@napi-rs/canvas', '@anthropic-ai/sdk', 'pdfjs-dist', 'pdfjs-dist/build/pdf.worker.mjs'],
+      output: {
+        // 単一ファイル出力 (dynamic import chunk を作らない)
+        inlineDynamicImports: true,
+      },
     },
   },
 });

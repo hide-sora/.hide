@@ -28,6 +28,7 @@ import type {
   HideHeader,
   HideToken,
   HidePitch,
+  HideClef,
   PartMeta,
 } from './hideTypes';
 import { getPartMeta } from './hideTypes';
@@ -85,6 +86,20 @@ export interface HideMatrix {
   partLabels: string[];
   /** パートメタ情報 (displayName, midiProgram, partId) */
   partMetas: Map<string, PartMeta>;
+  /**
+   * パートラベル → 譜表記号 のマップ (v1.9 後期)
+   *
+   * `[1T][2B][3T8][4T-8]` のインライン譜表宣言および中盤の `[B]` のような
+   * clefChange を LAST-WINS で適用した結果。未宣言のパートは含まれない
+   * (呼び出し側は header.clef もしくは 'TREBLE' をデフォルトとして使う)。
+   *
+   *  - `[1T]` → partClefs['1'] = 'TREBLE'
+   *  - `[2B]` → partClefs['2'] = 'BASS'
+   *  - `[3T8]` → partClefs['3'] = 'TREBLE_8VA' (オクターブ上)
+   *  - `[4T-8]` → partClefs['4'] = 'TREBLE_8VB' (オクターブ下)
+   *  - 中盤の `[B]` → 現在のパートの値を 'BASS' に上書き
+   */
+  partClefs: Record<string, HideClef>;
   /** 小節の配列 (時間順) */
   measures: HideMatrixMeasure[];
 }
@@ -146,7 +161,7 @@ export function analyzeMatrixFromLex(lex: HideLexResult): HideMatrixResult {
   const issues: HideMatrixIssue[] = [];
 
   // 1. パート毎の生トークンに分割
-  const { partOrder, partTokens } = splitTokensByPart(lex.tokens);
+  const { partOrder, partTokens, partClefs } = splitTokensByPart(lex.tokens);
 
   // パートが1つも宣言されていない場合: ソース全体を単一パート "M" として
   // 扱う (compileHide のデフォルトと揃える)。
@@ -155,7 +170,16 @@ export function analyzeMatrixFromLex(lex: HideLexResult): HideMatrixResult {
     partTokens.set('M', lex.tokens.slice());
   }
 
-  // 2. 各パートをセルに分割し、各セルをパースして body/pitches/duration を計算
+  // 2. 1 小節あたりの期待 unit 数を header から計算
+  //    例: TIME=4/4, DIV=32 → unitsPerMeasure = 32u
+  //    auto-bucketing と duration consistency 検証の両方で使う。
+  const unitsPerMeasure = Math.round(
+    (lex.header.timeNum / lex.header.timeDen) * lex.header.div,
+  );
+
+  // 3. 各パートをセルに分割し、各セルをパースして body/pitches/duration を計算
+  //    `|` を一切書かないユーザーへの配慮: パース後のセルが unitsPerMeasure より長ければ
+  //    自動的に小節サイズ単位で splitCellByMeasure する (compileHide の bucketize と同等)。
   const cellsByPart = new Map<string, HideMatrixCell[]>();
   let maxMeasureCount = 0;
   for (const label of partOrder) {
@@ -164,13 +188,27 @@ export function analyzeMatrixFromLex(lex: HideLexResult): HideMatrixResult {
     const matrixCells: HideMatrixCell[] = [];
     for (let mi = 0; mi < rawCells.length; mi++) {
       const cell = parseMatrixCell(label, mi, rawCells[mi], lex, issues);
-      matrixCells.push(cell);
+      // auto-bucket: ユーザーが `|` を省略した場合、cell が unitsPerMeasure より
+      // 長くなるので、ここで小節サイズ単位に再分割する。連符・反復は atomic として扱う。
+      if (
+        unitsPerMeasure > 0 &&
+        cell.durationUnits > unitsPerMeasure
+      ) {
+        const subCells = splitCellByMeasure(cell, unitsPerMeasure);
+        for (const sub of subCells) {
+          sub.measureIndex = matrixCells.length;
+          matrixCells.push(sub);
+        }
+      } else {
+        cell.measureIndex = matrixCells.length;
+        matrixCells.push(cell);
+      }
     }
     cellsByPart.set(label, matrixCells);
     if (matrixCells.length > maxMeasureCount) maxMeasureCount = matrixCells.length;
   }
 
-  // 3. 小節数の不一致を検出
+  // 4. 小節数の不一致を検出
   for (const label of partOrder) {
     const cells = cellsByPart.get(label)!;
     if (cells.length !== maxMeasureCount) {
@@ -182,13 +220,8 @@ export function analyzeMatrixFromLex(lex: HideLexResult): HideMatrixResult {
     }
   }
 
-  // 4. 小節を構築 + duration consistency チェック (小節単位)
-  //    header から「1小節あたりの期待 unit 数」を計算し、各 cell が一致するかを検証する。
-  //    例: TIME=4/4, DIV=32 → unitsPerMeasure = 32u
+  // 5. 小節を構築 + duration consistency チェック (小節単位)
   //    空セル (`[1]| C4m | | E4m |` の中央) は durationUnits=0 になるので必ずここで弾かれる。
-  const unitsPerMeasure = Math.round(
-    (lex.header.timeNum / lex.header.timeDen) * lex.header.div,
-  );
   const measures: HideMatrixMeasure[] = [];
   for (let mi = 0; mi < maxMeasureCount; mi++) {
     const measureCells = new Map<string, HideMatrixCell>();
@@ -239,6 +272,7 @@ export function analyzeMatrixFromLex(lex: HideLexResult): HideMatrixResult {
     header: lex.header,
     partLabels: partOrder,
     partMetas,
+    partClefs,
     measures,
   };
 
@@ -289,13 +323,18 @@ export function measureToChord(matrix: HideMatrix, measure: HideMatrixMeasure): 
  *    [T120] などは stream mode の compileHide で処理されるべき)
  * - partLabel が再出現した場合、同じパートの末尾に append する
  *   (例: `[1]C4k[2]E4k[1]D4k` で part 1 = [C4k, D4k])
+ * - partSwitch が `[1T]` `[2B]` のように clef を伴っていれば partClefs に
+ *   記録する (LAST-WINS)。単独 `[T]` `[B]` の clefChange も同様に現在パート
+ *   の clef を上書きする。
  */
 function splitTokensByPart(rawTokens: HideRawToken[]): {
   partOrder: string[];
   partTokens: Map<string, HideRawToken[]>;
+  partClefs: Record<string, HideClef>;
 } {
   const partTokens = new Map<string, HideRawToken[]>();
   const partOrder: string[] = [];
+  const partClefs: Record<string, HideClef> = {};
   let currentPart: string | null = null;
 
   for (const tok of rawTokens) {
@@ -305,13 +344,24 @@ function splitTokensByPart(rawTokens: HideRawToken[]): {
         partTokens.set(currentPart, []);
         partOrder.push(currentPart);
       }
+      // [1T] のように clef 付きならパートの clef を更新 (LAST-WINS)
+      if (tok.clef) {
+        partClefs[currentPart] = tok.clef;
+      }
+      continue;
+    }
+    // 単独 [T] [B] [T8] [T-8] は現在パートの clef を上書き (LAST-WINS)
+    if (tok.kind === 'meta' && tok.type === 'clefChange' && tok.clef) {
+      if (currentPart !== null) {
+        partClefs[currentPart] = tok.clef;
+      }
       continue;
     }
     if (currentPart === null) continue; // pre-amble: ignore
     partTokens.get(currentPart)!.push(tok);
   }
 
-  return { partOrder, partTokens };
+  return { partOrder, partTokens, partClefs };
 }
 
 /**
@@ -319,16 +369,16 @@ function splitTokensByPart(rawTokens: HideRawToken[]): {
  *
  * セル区切りとして認識するもの:
  *  - `|` (barline) — v1.8 からの grid form 区切り
- *  - `.` 系 (measureBarrier, 通常/複/終止/repeatEnd) — v1.9 で導入された stream form 区切り
- *    `.:` (repeatStart) は次の小節の左端マーカーであり区切りそのものではないため除外
+ *  - `,` 系 (measureBarrier, 通常/複/終止/repeatEnd) — v1.9 で導入された stream form 区切り
+ *    `,:` (repeatStart) は次の小節の左端マーカーであり区切りそのものではないため除外
  *
  * 空セルの扱い:
  *  - 先頭・末尾の完全空セルは捨てる (`[1]| C4k | D4k |` → 2セル)
- *  - **同種連続** `| |` や `. .` の間の空セルは「明示的な空小節」として残す
+ *  - **同種連続** `| |` や `, ,` の間の空セルは「明示的な空小節」として残す
  *    (例: `[1]| C4k | | D4k |` → 3セル、中央は duration=0 の空セル)
- *  - **異種連続** `| .` や `. |` は round-trip 出力由来の冗長境界 (= grid form の `|`
- *    と barline style の `.` 系を併記したケース) なので 1 つの境界として潰す
- *    cf. musicXmlToHide.ts の `convertMeasureToHide` がセル末尾に `.` 系を付加する
+ *  - **異種連続** `| ,` や `, |` は round-trip 出力由来の冗長境界 (= grid form の `|`
+ *    と barline style の `,` 系を併記したケース) なので 1 つの境界として潰す
+ *    cf. musicXmlToHide.ts の `convertMeasureToHide` がセル末尾に `,` 系を付加する
  */
 function splitTokensIntoCells(tokens: HideRawToken[]): HideRawToken[][] {
   const cells: HideRawToken[][] = [];
@@ -424,6 +474,73 @@ function parseMatrixCell(
     pitches: collectPitches(body),
     durationUnits: computeBodyDuration(body),
   };
+}
+
+/**
+ * 1セルが unitsPerMeasure より長い場合、複数の小節セルに自動分割する。
+ *
+ * 動機: ユーザーが `|` を一切書かずに `[1] C4k C4k C4k C4k C4k C4k C4k C4k`
+ * のように flat に並べた場合でも、4/4 拍子なら自動的に 2 小節に分割して
+ * 描画したい。stream mode の compileHide → bucketize() と同じ振る舞いを
+ * matrix mode にも持たせるための再分割パス。
+ *
+ *  - note / rest: durationUnits を累積。`current + dur > unitsPerMeasure` で次セルへ。
+ *  - tuplet     : targetUnits を累積。atomic 扱い (中で割らない)。
+ *  - repeat     : 展開後の総演奏時間を累積。atomic 扱い。
+ *  - meta       : duration 0。current にぶら下げて流す (頭出しテンポ等)。
+ *
+ * tuplet/repeat の途中で小節境界を跨ぐケースは現状で警告を出さないが、
+ * `|` を明示する書き方が必要なケースとしてユーザーに任せる。
+ */
+function splitCellByMeasure(
+  cell: HideMatrixCell,
+  unitsPerMeasure: number,
+): HideMatrixCell[] {
+  if (cell.durationUnits <= unitsPerMeasure || unitsPerMeasure <= 0) {
+    return [cell];
+  }
+  const subBodies: HideToken[][] = [];
+  let current: HideToken[] = [];
+  let currentUnits = 0;
+  for (const tok of cell.body) {
+    let dur = 0;
+    if (tok.kind === 'note' || tok.kind === 'rest') {
+      dur = tok.durationUnits;
+    } else if (tok.kind === 'tuplet') {
+      dur = tok.targetUnits;
+    } else if (tok.kind === 'repeat') {
+      dur =
+        computeBodyDuration(tok.body) * Math.max(1, Math.floor(tok.count));
+    }
+    // 次のトークンを current に積むと unitsPerMeasure を超えるなら、
+    // 先に current を閉じて新しい sub-cell を開く (current が空の時は閉じない)
+    if (
+      dur > 0 &&
+      currentUnits > 0 &&
+      currentUnits + dur > unitsPerMeasure
+    ) {
+      subBodies.push(current);
+      current = [];
+      currentUnits = 0;
+    }
+    current.push(tok);
+    currentUnits += dur;
+    // ぴったり 1 小節分埋まったら閉じる
+    if (currentUnits >= unitsPerMeasure && currentUnits > 0) {
+      subBodies.push(current);
+      current = [];
+      currentUnits = 0;
+    }
+  }
+  if (current.length > 0) subBodies.push(current);
+
+  return subBodies.map((body, i) => ({
+    partLabel: cell.partLabel,
+    measureIndex: cell.measureIndex + i, // caller が再採番する
+    body,
+    pitches: collectPitches(body),
+    durationUnits: computeBodyDuration(body),
+  }));
 }
 
 /**

@@ -231,6 +231,7 @@ function alignPartLengths(parts: HidePart[], header: HideHeader, warnings: strin
       parts[i].tokens.push({
         kind: 'rest',
         durationUnits: r,
+        dots: 0,
         staccato: false,
         tieToNext: false,
       });

@@ -13,20 +13,51 @@
 // ヘッダー
 // ============================================================
 
-/** 譜表記号 */
-export type HideClef = 'TREBLE' | 'BASS' | 'ALTO' | 'TENOR' | 'PERCUSSION';
+/**
+ * 譜表記号
+ *  - TREBLE      : ト音記号 (G clef)
+ *  - TREBLE_8VA  : ト音記号 8va (上に小さく "8" — 実音は 1 オクターブ上)
+ *  - TREBLE_8VB  : ト音記号 8va bassa (下に小さく "8" — 実音は 1 オクターブ下)
+ *                  テナーパートで頻用
+ *  - BASS        : ヘ音記号 (F clef)
+ *  - ALTO/TENOR  : ハ音記号 (C clef) 中央/上
+ *  - PERCUSSION  : 打楽器用 5 線無し中立譜表
+ */
+export type HideClef = 'TREBLE' | 'TREBLE_8VA' | 'TREBLE_8VB' | 'BASS' | 'ALTO' | 'TENOR' | 'PERCUSSION';
 
 /** ヘッダーで宣言される全体設定 */
 export interface HideHeader {
-  clef: HideClef;        // CLEF:TREBLE (省略時 TREBLE)
+  clef: HideClef;        // CLEF:TREBLE (省略時 TREBLE) — score 全体のデフォルト譜表
   timeNum: number;       // TIME numerator (省略時 4)
   timeDen: number;       // TIME denominator (省略時 4)
   keyFifths: number;     // KEY: 五度圏 元曲の調 (省略時 0=C major)
   div: number;           // DIV: 全音符あたりの単位数 (省略時 32 → 4分=8u)
   transposeSemitones: number; // [K+n] による半音シフト (省略時 0)
+  /**
+   * パートラベル → 譜表記号 のマップ (省略時 空 = 全パートが header.clef を使う)
+   *
+   * `[CLEFS:1=T,2=T,3=T8,4=B ...]` のような per-part 譜表宣言からパースされる。
+   * matrix mode で `[1][2][3][4]` 等の番号付きパートに譜表を割り当てるための
+   * 公式なメカニズム。stream mode (単一パート) では無視される。
+   *
+   * 値の vocabulary:
+   *   T  → TREBLE
+   *   B  → BASS
+   *   T8 → TREBLE_8VB
+   *   A  → ALTO
+   *   Te → TENOR
+   *   N  → PERCUSSION
+   */
+  partClefs: Record<string, HideClef>;
 }
 
-/** ヘッダーのデフォルト値 (v1.8: ヘッダー完全省略時に使われる) */
+/**
+ * ヘッダーのデフォルト値 (v1.8: ヘッダー完全省略時に使われる)
+ *
+ * partClefs は Record なので、spread でコピーすると参照共有される。
+ * パーサ等で既定値をベースに header を組み立てる場合は必ず
+ * `createDefaultHeader()` か `{ ...HIDE_HEADER_DEFAULT, partClefs: {} }` を使う。
+ */
 export const HIDE_HEADER_DEFAULT: HideHeader = {
   clef: 'TREBLE',
   timeNum: 4,
@@ -34,7 +65,13 @@ export const HIDE_HEADER_DEFAULT: HideHeader = {
   keyFifths: 0,
   div: 32,
   transposeSemitones: 0,
+  partClefs: {},
 };
+
+/** 新しい (mutate しても安全な) デフォルトヘッダーを返す */
+export function createDefaultHeader(): HideHeader {
+  return { ...HIDE_HEADER_DEFAULT, partClefs: {} };
+}
 
 // ============================================================
 // 音符・休符の構成要素
@@ -67,10 +104,19 @@ export type HideUnit = number;
 export interface HideNoteToken {
   kind: 'note';
   pitches: HidePitch[];        // 和音対応
-  durationUnits: HideUnit;     // 例: jなら 4u
+  durationUnits: HideUnit;     // 例: jなら 4u (付点込み: k.=12u, k..=14u)
+  dots: number;                // 0=無し, 1=付点 (×1.5), 2=2重付点 (×1.75)
   staccato: boolean;           // 大文字長さ (K/L/M等)
+  accent: boolean;             // k> アクセント
+  tenuto: boolean;             // k- テヌート
+  fermata: boolean;            // k~ フェルマータ
+  marcato: boolean;            // k^ マルカート
+  trill: boolean;              // k* トリル
   slurStart: boolean;          // 小文字音名 (a-g)
+  slurEnd: boolean;            // _ サフィックス
   tieToNext: boolean;          // 直後に '+' があった
+  tieFromPrev?: boolean;       // 自動タイ分割で前小節から繋がっている
+  graceType?: 'grace' | 'acciaccatura'; // ~ 前打音 / ~~ 短前打音
   lyric?: string;              // 直後の歌詞文字列
   tupletMember?: HideTupletMemberInfo;
 }
@@ -78,32 +124,47 @@ export interface HideNoteToken {
 /** 休符トークン (Rk = 4分休符) */
 export interface HideRestToken {
   kind: 'rest';
-  durationUnits: HideUnit;
+  durationUnits: HideUnit;     // 付点込み: Rk.=12u, Rk..=14u
+  dots: number;                // 0=無し, 1=付点 (×1.5), 2=2重付点 (×1.75)
   staccato: boolean;
   tieToNext: boolean;
   tupletMember?: HideTupletMemberInfo;
 }
 
-/** メタコマンドトークン ([T120][M3/4][K+2][KCm][1][2][P]等) */
+/**
+ * メタコマンドトークン ([T120][M3/4][K+2][KCm][1][2][P][1T][2B][3T8][B]等)
+ *
+ * v1.9 拡張: partSwitch に optional clef を持たせて `[1T]` `[2B]` `[3T8]` のような
+ * 「パート宣言 + 譜表」構文をサポートする。単独 `[T]` `[B]` `[T8]` は partLabel を
+ * 持たない "clefChange" 型で、現在のパートの譜表を切り替える。
+ */
 export interface HideMetaToken {
   kind: 'meta';
-  type: 'tempo' | 'time' | 'key' | 'transpose' | 'partSwitch';
+  type: 'tempo' | 'time' | 'key' | 'transpose' | 'partSwitch' | 'clefChange' | 'dynamics' | 'volta';
   bpm?: number;                    // [T120] → 120
+  voltaNumber?: number;            // [V1] → 1, [V2] → 2
   timeNum?: number;                // [M3/4] → 3
   timeDen?: number;                // [M3/4] → 4
   keyFifths?: number;              // [KCm] → -3 (元曲の調変更)
   transposeSemitones?: number;     // [K+2] → 2 (半音シフト, v1.6)
   partLabel?: string;              // [1][2][P] → '1','2','P'  (v1.9: SATB は廃止)
+  /** 強弱記号 [Dp] [Df] [Dff] [Dmf] 等 / ヘアピン [D<] [D>] [D/] */
+  dynamics?: string;
+  /**
+   * 譜表 — partSwitch に付与された場合は「宣言時の譜表」、clefChange 単独の場合は
+   * 「現在パートの譜表変更」。undefined は譜表指定なし。
+   */
+  clef?: HideClef;
 }
 
 /**
  * 小節線スタイル (v1.9 後期で導入された 5 種類のバーライン語彙)
  *
- *  - `single`     : `.`   通常の小節線 (MusicXML 暗黙)
- *  - `double`     : `..`  複縦線 (light-light)
- *  - `final`      : `...` 終止線 (light-heavy)
- *  - `repeatStart`: `.:`  繰り返しスタート (heavy-light + repeat forward, 次の小節の左端)
- *  - `repeatEnd`  : `:.`  繰り返し終わり (light-heavy + repeat backward, 現在の小節の右端)
+ *  - `single`     : `,`   通常の小節線 (MusicXML 暗黙)
+ *  - `double`     : `,,`  複縦線 (light-light)
+ *  - `final`      : `,,,` 終止線 (light-heavy)
+ *  - `repeatStart`: `,:` 繰り返しスタート (heavy-light + repeat forward, 次の小節の左端)
+ *  - `repeatEnd`  : `:,`  繰り返し終わり (light-heavy + repeat backward, 現在の小節の右端)
  */
 export type HideBarlineStyle = 'single' | 'double' | 'final' | 'repeatStart' | 'repeatEnd';
 
@@ -117,6 +178,9 @@ export type HideBarlineStyle = 'single' | 'double' | 'final' | 'repeatStart' | '
  *   3. 新しい bucket を開始
  * という処理をする。`|` は引き続き whitespace 扱い (matrix mode の cell 区切り
  * としてのみ意味を持つ)。
+ *
+ * ソース表記: `,` `,,` `,,,` `,:` `:,`
+ * (`.` は付点修飾子として使用: `k.` = 付点四分音符)
  *
  * forward (`compileHide`) / reverse (`musicXmlToHide`) / future PDF OMR の
  * 三者で一貫する end-of-measure マーカー。

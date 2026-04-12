@@ -1,5 +1,5 @@
 [CLEF:TREBLE TIME:4/4 KEY:-1 DIV:4]
-[1]| F4j . | A4j G4j A4j B4j . | C5l A4j D5j . | C5j B4j A4j G4j . | A4l Rj C5j . | D5j E5j F5j E5j . | D5l C5j A4j . | B4j A4j G4j G4j . | F4l ... |
-[2]| C4m . | F4m G4m F4m F4m . | E4l F4l G4l E4l F4m F4m . | F4m E4l F4m E4l . | F4m Rm A4m+ . | A4l G4l+ G4l C5j B4j A4m A4m . | A4m G4m G4m F4m+ . | F4l E4l F4m F4m E4m . | C4m ... |
-[3]| A3m . | C4m C4m C4m D4m . | G3m C4m C4m B3m . | C4m D4l B3l C4m C4m . | C4m Rm F4m . | F4m E4m+ E4l D4l C4m+ . | C4m B3m E4m C4m . | B3m C4m D4m C4l B3j . | A3m ... |
-[4]| F2l . | F3l E3l Eb3l D3l . | C3j D3j E3j C3j F3l B2l . | A2l G2l F2j A2j C3l . | F2m Rl A3l . | B2l C3l D3j F3j A3j G3j . | F3j D3j G3l C3l F2l . | G2l A2l B2l C3l . | F2m ... |
+[1] F4j ,, A4j G4j A4j Bb4j ,, C5j. A4j~ D5j ,, C5j Bb4j A4j G4j ,, A4j.~ Rj C5j ,, D5j E5j F5j E5j ,, D5j. C5j~ A4j ,, Bb4j A4j G4j G4j ,, F4l.~ ,,,
+[2] C4l.. ,, F4l.. G4l.. F4l.. F4l.. ,, E4j. F4j. G4j. E4j. F4l.. F4l.. ,, F4m. E4j. F4m. E4j. ,, F4m Rl.. A4l..+ ,, A4j. G4j.+ G4j. C5j Bb4j A4l.. A4l.. ,, A4l.. G4l.. G4l.. F4l..+ ,, F4j. E4j. F4l.. F4l.. E4l.. ,, C4m. ,,,
+[3] A3l.. ,, C4l.. C4l.. C4l.. D4l.. ,, G3l.. C4l.. C4l.. Bb3l.. ,, C4l.. D4j. Bb3j. C4l.. C4l.. ,, C4m Rl.. F4l.. ,, F4l.. E4l..+ E4j. D4j. C4l..+ ,, C4l.. Bb3l.. E4l.. C4l.. ,, Bb3l.. C4l.. D4l.. C4l. Bb3j ,, A3m. ,,,
+[4] F2j. ,, F3j. E3j. Eb3j. D3j. ,, C3j D3j E3j C3j F3j. Bb2j. ,, A2j. G2j. F2j A2j C3j. ,, F2l.. Rj. A3j. ,, Bb2j. C3j. D3j F3j A3j G3j ,, F3j D3j G3j. C3j. F2j. ,, G2j. A2j. Bb2j. C3j. ,, F2m. ,,,

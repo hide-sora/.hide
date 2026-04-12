@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>.hide minimal preview</title>
+  <style>
+    body { font-family: system-ui; padding: 20px; max-width: 1100px; margin: 0 auto; background: #f5f5f5; }
+    h1 { color: #333; font-size: 18px; }
+    .case { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 16px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .case h3 { margin: 0 0 6px; font-size: 14px; color: #333; }
+    .src { background: #1a1a2e; color: #ffd86b; padding: 6px; border-radius: 4px; font-family: monospace; font-size: 11px; white-space: pre-wrap; margin-bottom: 6px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .col { display: flex; flex-direction: column; min-width: 0; }
+    .col-label { font-size: 11px; font-weight: 700; padding: 2px 6px; border-radius: 3px; align-self: flex-start; margin-bottom: 4px; }
+    .vex-label { background: #efebff; color: #6c5ce7; }
+    .osmd-label { background: #e6f7f1; color: #00b894; }
+    .vex-box, .osmd-box { background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 6px; min-height: 100px; overflow: auto; }
+    .vex-box { border-color: #6c5ce7; }
+    .osmd-box { border-color: #00b894; }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/opensheetmusicdisplay@1.8.7/build/opensheetmusicdisplay.min.js"></script>
+</head>
+<body>
+  <h1>.hide ミニプレビュー (VexFlow vs OSMD 並列比較)</h1>
+
+  <div style="background:#fff;border-radius:8px;padding:12px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.1)">
+    <h3 style="margin:0 0 6px;font-size:14px">自由入力テスト</h3>
+    <textarea id="customSrc" rows="4" style="width:100%;font-family:monospace;font-size:12px;padding:6px;border:1px solid #ccc;border-radius:4px;box-sizing:border-box">[CLEF:TREBLE TIME:4/4 KEY:0 DIV:16]
+[1]| C4k D4k E4k F4k | G4l E4l | C5k. C5j C5k C5k | C4m |</textarea>
+    <button id="renderBtn" style="margin-top:6px;padding:6px 16px;border:none;border-radius:4px;background:#6c5ce7;color:#fff;cursor:pointer;font-size:13px">描画テスト</button>
+    <div id="customResult" style="margin-top:8px"></div>
+  </div>
+
+  <div id="root"></div>
+  <script type="module">
+    import { compileHide } from '/src/hideLoader.ts';
+    import { analyzeMatrix } from '/src/hideMatrix.ts';
+    import { renderHideMatrix } from '/hideToVexflow.js';
+
+    // 自由入力テスト
+    document.getElementById('renderBtn').addEventListener('click', () => {
+      const src = document.getElementById('customSrc').value.trim();
+      const result = document.getElementById('customResult');
+      result.innerHTML = '';
+      if (!src) return;
+
+      const row = document.createElement('div');
+      row.className = 'row';
+
+      const vexCol = document.createElement('div');
+      vexCol.className = 'col';
+      vexCol.innerHTML = '<div class="col-label vex-label">VexFlow direct</div>';
+      const vexBox = document.createElement('div');
+      vexBox.className = 'vex-box';
+      vexBox.style.width = '100%';
+      vexCol.appendChild(vexBox);
+
+      const osmdCol = document.createElement('div');
+      osmdCol.className = 'col';
+      osmdCol.innerHTML = '<div class="col-label osmd-label">OSMD via MusicXML</div>';
+      const osmdBox = document.createElement('div');
+      osmdBox.className = 'osmd-box';
+      osmdCol.appendChild(osmdBox);
+
+      row.appendChild(vexCol);
+      row.appendChild(osmdCol);
+      result.appendChild(row);
+
+      try {
+        const { matrix } = analyzeMatrix(src);
+        renderHideMatrix(vexBox, matrix);
+      } catch (e) { vexBox.textContent = 'VexFlow error: ' + e.message; }
+      try {
+        const r = compileHide(src);
+        const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(osmdBox, {
+          autoResize: false, drawTitle: false, drawComposer: false, drawCredits: false,
+        });
+        osmd.load(r.musicXml).then(() => osmd.render());
+      } catch (e) { osmdBox.textContent = 'OSMD error: ' + e.message; }
+    });
+
+    const cases = [
+      {
+        name: '①最小の単音列 (4分音符4個)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4kD4kE4kF4k',
+      },
+      {
+        name: '②仕様書サンプル (歌詞・スラー・スタッカート)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4kゆD4kめe4jをf4jみG4Kる',
+      },
+      {
+        name: '③和音 (Cメジャー)',
+        source: '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]C4E4G4kC4E4G4kC4E4G4kC4E4G4k',
+      },
+      {
+        name: '⑰4声合唱 ([1][2][3][4])',
+        source: '[1]C5kE5kG5kF5k[2]G4kG4kC5kA4k[3]E4kC4kE4kC4k[4]C3kC3kC3kF2k',
+      },
+      {
+        name: 'R① 4声 grid form (全音符 × 3小節)',
+        source:
+          '[1]| C5m | B4m | C5m |\n' +
+          '[2]| G4m | G4m | G4m |\n' +
+          '[3]| E4m | E4m | E4m |\n' +
+          '[4]| C3m | E3m | C3m |',
+      },
+    ];
+
+    const root = document.getElementById('root');
+
+    async function renderOsmd(box, xml) {
+      const osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay(box, {
+        autoResize: false, drawTitle: false, drawComposer: false, drawCredits: false,
+      });
+      await osmd.load(xml);
+      osmd.render();
+    }
+
+    for (const tc of cases) {
+      const card = document.createElement('div');
+      card.className = 'case';
+      card.innerHTML = `<h3>${tc.name}</h3><div class="src">${tc.source.replace(/&/g,'&amp;').replace(/</g,'&lt;')}</div>`;
+
+      const row = document.createElement('div');
+      row.className = 'row';
+      const vexCol = document.createElement('div');
+      vexCol.className = 'col';
+      vexCol.innerHTML = '<div class="col-label vex-label">VexFlow direct</div>';
+      const vexBox = document.createElement('div');
+      vexBox.className = 'vex-box';
+      vexCol.appendChild(vexBox);
+      const osmdCol = document.createElement('div');
+      osmdCol.className = 'col';
+      osmdCol.innerHTML = '<div class="col-label osmd-label">OSMD via MusicXML</div>';
+      const osmdBox = document.createElement('div');
+      osmdBox.className = 'osmd-box';
+      osmdCol.appendChild(osmdBox);
+      row.appendChild(vexCol);
+      row.appendChild(osmdCol);
+      card.appendChild(row);
+      root.appendChild(card);
+
+      try {
+        const { matrix } = analyzeMatrix(tc.source);
+        renderHideMatrix(vexBox, matrix);
+      } catch (e) { vexBox.textContent = 'Vex error: ' + e.message; }
+      try {
+        const r = compileHide(tc.source);
+        await renderOsmd(osmdBox, r.musicXml);
+      } catch (e) { osmdBox.textContent = 'OSMD error: ' + e.message; }
+    }
+  </script>
+</body>
+</html>

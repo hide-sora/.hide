@@ -49,6 +49,8 @@ interface MeasureBucket {
   rightBarlineStyle?: HideBarlineStyle;
   /** この bucket の左端バーラインスタイル (`.:` のみ。前の bucket で `.:` を見たら次に立つ) */
   leftBarlineStyle?: HideBarlineStyle;
+  /** Volta (N番括弧) — この小節の左端に置く */
+  voltaNumber?: number;
 }
 
 /**
@@ -173,9 +175,9 @@ export function partitionedAstToMusicXML(
       const bucket = measures[mi];
       out.push(`    <measure number="${mi + 1}">`);
 
-      // 左端バーライン (`.:` = repeatStart)
-      if (bucket.leftBarlineStyle) {
-        emitBarline(out, bucket.leftBarlineStyle, 'left');
+      // 左端バーライン (`.:` = repeatStart) + volta
+      if (bucket.leftBarlineStyle || bucket.voltaNumber !== undefined) {
+        emitBarlineWithVolta(out, bucket.leftBarlineStyle, 'left', bucket.voltaNumber);
       }
 
       if (mi === 0) {
@@ -228,6 +230,8 @@ export function partitionedAstToMusicXML(
               continue;
             }
             emitTempoDirection(out, tok.bpm);
+          } else if (tok.kind === 'meta' && tok.type === 'dynamics' && tok.dynamics) {
+            emitDynamicsDirection(out, tok.dynamics);
           } else if (tok.kind === 'rest') {
             emitRest(out, tok, tupletScale);
           } else if (tok.kind === 'note') {
@@ -280,6 +284,28 @@ function emitTempoDirection(out: string[], bpm: number): void {
   out.push('      </direction>');
 }
 
+function emitDynamicsDirection(out: string[], dynamics: string): void {
+  if (dynamics === '<' || dynamics === '>' || dynamics === '/') {
+    out.push('      <direction placement="below">');
+    out.push('        <direction-type>');
+    if (dynamics === '<') {
+      out.push('          <wedge type="crescendo"/>');
+    } else if (dynamics === '>') {
+      out.push('          <wedge type="diminuendo"/>');
+    } else {
+      out.push('          <wedge type="stop"/>');
+    }
+    out.push('        </direction-type>');
+    out.push('      </direction>');
+  } else {
+    out.push('      <direction placement="below">');
+    out.push('        <direction-type>');
+    out.push(`          <dynamics><${dynamics}/></dynamics>`);
+    out.push('        </direction-type>');
+    out.push('      </direction>');
+  }
+}
+
 /**
  * 小節バーラインを MusicXML `<barline>` 要素として出力する。
  *
@@ -310,6 +336,40 @@ function emitBarline(out: string[], style: HideBarlineStyle, location: 'left' | 
       out.push('        <bar-style>light-heavy</bar-style>');
       out.push('        <repeat direction="backward"/>');
       break;
+  }
+  out.push('      </barline>');
+}
+
+function emitBarlineWithVolta(
+  out: string[],
+  style: HideBarlineStyle | undefined,
+  location: 'left' | 'right',
+  voltaNumber?: number,
+): void {
+  out.push(`      <barline location="${location}">`);
+  if (style) {
+    switch (style) {
+      case 'single':
+        out.push('        <bar-style>regular</bar-style>');
+        break;
+      case 'double':
+        out.push('        <bar-style>light-light</bar-style>');
+        break;
+      case 'final':
+        out.push('        <bar-style>light-heavy</bar-style>');
+        break;
+      case 'repeatStart':
+        out.push('        <bar-style>heavy-light</bar-style>');
+        out.push('        <repeat direction="forward"/>');
+        break;
+      case 'repeatEnd':
+        out.push('        <bar-style>light-heavy</bar-style>');
+        out.push('        <repeat direction="backward"/>');
+        break;
+    }
+  }
+  if (voltaNumber !== undefined) {
+    out.push(`        <ending number="${voltaNumber}" type="start"/>`);
   }
   out.push('      </barline>');
 }
@@ -429,10 +489,15 @@ function bucketize(
       continue;
     }
     if (tok.kind === 'meta') {
-      if (tok.type === 'tempo') {
+      if (tok.type === 'tempo' || tok.type === 'dynamics') {
         // 現在の bucket に inline で挿入
         let bucket = measures[measures.length - 1];
         bucket.tokens.push(tok);
+        continue;
+      }
+      if (tok.type === 'volta' && tok.voltaNumber !== undefined) {
+        let bucket = measures[measures.length - 1];
+        bucket.voltaNumber = tok.voltaNumber;
         continue;
       }
       if (tok.type === 'time' && tok.timeNum !== undefined && tok.timeDen !== undefined) {
@@ -465,17 +530,67 @@ function bucketize(
       continue;
     }
     // note / rest
+    // 装飾音 (grace) は演奏時間 0 — bucket 計算に参加しない
+    if (tok.kind === 'note' && tok.graceType) {
+      let bucket = measures[measures.length - 1];
+      bucket.tokens.push(tok);
+      continue;
+    }
     const dur = getEmittedDuration(tok, tupletScale);
     let bucket = measures[measures.length - 1];
-    if (bucket.totalUnits + dur > bucket.unitsPerMeasure) {
-      if (bucket.totalUnits > 0) {
-        bucket = startNewBucket(false);
+    const remaining = bucket.unitsPerMeasure - bucket.totalUnits;
+
+    if (dur > remaining && remaining > 0 && dur > bucket.unitsPerMeasure) {
+      // 小節を跨ぐ長い音符/休符 → 自動タイ分割
+      warnings.push(
+        `パート ${partLabel}: 音価 ${dur}u が小節残り ${remaining}u を超過 (拍子 ${currentTimeNum}/${currentTimeDen} = ${bucket.unitsPerMeasure}u)。自動タイ分割します。`,
+      );
+      let leftover = dur;
+      let isFirst = true;
+      while (leftover > 0) {
+        bucket = measures[measures.length - 1];
+        const space = bucket.unitsPerMeasure - bucket.totalUnits;
+        const chunk = Math.min(leftover, space);
+        const isLast = leftover - chunk <= 0;
+        if (tok.kind === 'note') {
+          const part: HideNoteToken = {
+            ...tok,
+            durationUnits: Math.round(chunk / tupletScale),
+            dots: 0,
+            tieToNext: isLast ? tok.tieToNext : true,
+            tieFromPrev: !isFirst,
+          };
+          bucket.tokens.push(part);
+        } else {
+          const part: HideRestToken = {
+            ...tok,
+            durationUnits: Math.round(chunk / tupletScale),
+            dots: 0,
+          };
+          bucket.tokens.push(part);
+        }
+        bucket.totalUnits += chunk;
+        leftover -= chunk;
+        isFirst = false;
+        if (bucket.totalUnits >= bucket.unitsPerMeasure && leftover > 0) {
+          startNewBucket(false);
+        }
       }
-    }
-    bucket.tokens.push(tok);
-    bucket.totalUnits += dur;
-    if (bucket.totalUnits >= bucket.unitsPerMeasure) {
-      startNewBucket(false);
+      if (bucket.totalUnits >= bucket.unitsPerMeasure) {
+        startNewBucket(false);
+      }
+    } else {
+      // 通常パス: 小節内に収まる
+      if (bucket.totalUnits + dur > bucket.unitsPerMeasure) {
+        if (bucket.totalUnits > 0) {
+          bucket = startNewBucket(false);
+        }
+      }
+      bucket.tokens.push(tok);
+      bucket.totalUnits += dur;
+      if (bucket.totalUnits >= bucket.unitsPerMeasure) {
+        startNewBucket(false);
+      }
     }
   }
   // 末尾の空 bucket を削る (1個だけは残す)
@@ -552,8 +667,11 @@ function emitNote(
   tupletScale: number,
 ): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
-  // <type> は連符でも元の長さ文字 (j など) から決める
-  const noteType = unitsToNoteType(tok.durationUnits);
+  // <type> は付点なしのベース長さから決める (k.=12u → base 8u = quarter)
+  const baseUnits = tok.dots === 2 ? tok.durationUnits / 1.75
+    : tok.dots === 1 ? tok.durationUnits / 1.5
+    : tok.durationUnits;
+  const noteType = unitsToNoteType(Math.round(baseUnits));
 
   // 連符 time-modification の actual:normal を計算
   let timeModXml: string | null = null;
@@ -579,15 +697,23 @@ function emitNote(
     const ruleB = applyRuleB(p, keyFifths, measureMemory);
 
     out.push('      <note>');
+    if (tok.graceType) {
+      out.push(tok.graceType === 'acciaccatura'
+        ? '        <grace slash="yes"/>'
+        : '        <grace/>');
+    }
     if (i > 0) out.push('        <chord/>');
     out.push('        <pitch>');
     out.push(`          <step>${p.step}</step>`);
     if (ruleB.needAlter) out.push(`          <alter>${ruleB.displayAlter}</alter>`);
     out.push(`          <octave>${p.octave}</octave>`);
     out.push('        </pitch>');
-    out.push(`        <duration>${emittedDur}</duration>`);
+    if (!tok.graceType) {
+      out.push(`        <duration>${emittedDur}</duration>`);
+    }
     out.push('        <voice>1</voice>');
     out.push(`        <type>${noteType}</type>`);
+    for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
     if (timeModXml) out.push(timeModXml);
 
     // 明示臨時記号 → <accidental> も書く (OSMD/OMR 表示用)
@@ -596,23 +722,35 @@ function emitNote(
       if (accName) out.push(`        <accidental>${accName}</accidental>`);
     }
 
-    // タイ start (chord 2つ目以降は省略)
+    // タイ stop/start (chord 2つ目以降は省略)
     const isFirstChordNote = i === 0;
+    if (tok.tieFromPrev && isFirstChordNote) {
+      out.push('        <tie type="stop"/>');
+    }
     if (tok.tieToNext && isFirstChordNote) {
       out.push('        <tie type="start"/>');
     }
 
+    const hasArticulations = tok.staccato || tok.accent || tok.tenuto || tok.marcato;
+    const hasOrnaments = tok.trill || tok.fermata;
     const wantNotations = isFirstChordNote && (
-      tok.staccato || tok.slurStart || tok.tieToNext ||
+      hasArticulations || hasOrnaments ||
+      tok.slurStart || tok.slurEnd || tok.tieToNext || tok.tieFromPrev ||
       tupletStartStop.start || tupletStartStop.stop
     );
     if (wantNotations) {
       out.push('        <notations>');
+      if (tok.tieFromPrev) {
+        out.push('          <tied type="stop"/>');
+      }
       if (tok.tieToNext) {
         out.push('          <tied type="start"/>');
       }
       if (tok.slurStart) {
         out.push('          <slur type="start" number="1"/>');
+      }
+      if (tok.slurEnd) {
+        out.push('          <slur type="stop" number="1"/>');
       }
       if (tupletStartStop.start) {
         out.push('          <tuplet type="start" number="1"/>');
@@ -620,8 +758,19 @@ function emitNote(
       if (tupletStartStop.stop) {
         out.push('          <tuplet type="stop" number="1"/>');
       }
-      if (tok.staccato) {
-        out.push('          <articulations><staccato/></articulations>');
+      if (tok.fermata) {
+        out.push('          <fermata type="upright"/>');
+      }
+      if (hasArticulations) {
+        out.push('          <articulations>');
+        if (tok.staccato) out.push('            <staccato/>');
+        if (tok.accent) out.push('            <accent/>');
+        if (tok.tenuto) out.push('            <tenuto/>');
+        if (tok.marcato) out.push('            <strong-accent type="up"/>');
+        out.push('          </articulations>');
+      }
+      if (tok.trill) {
+        out.push('          <ornaments><trill-mark/></ornaments>');
       }
       out.push('        </notations>');
     }
@@ -646,11 +795,15 @@ function alterToAccidentalName(alter: -1 | 0 | 1): string | null {
 
 function emitRest(out: string[], tok: HideRestToken, tupletScale: number): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
+  const baseUnits = tok.dots === 2 ? tok.durationUnits / 1.75
+    : tok.dots === 1 ? tok.durationUnits / 1.5
+    : tok.durationUnits;
   out.push('      <note>');
   out.push('        <rest/>');
   out.push(`        <duration>${emittedDur}</duration>`);
   out.push('        <voice>1</voice>');
-  out.push(`        <type>${unitsToNoteType(tok.durationUnits)}</type>`);
+  out.push(`        <type>${unitsToNoteType(Math.round(baseUnits))}</type>`);
+  for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
   // 休符の連符 time-modification (連符内に休符がある場合)
   if (tok.tupletMember) {
     const { totalMembers, targetUnits, memberIndex } = tok.tupletMember;
@@ -724,10 +877,20 @@ function unitsToNoteType(units: number): string {
 function clefToMusicXml(clef: HideClef): { sign: string; line: number } {
   switch (clef) {
     case 'TREBLE': return { sign: 'G', line: 2 };
+    // TREBLE_8VA / TREBLE_8VB は譜面上の sign/line は G line 2 と同じ。
+    // 実音の octave シフト (clef-octave-change: +1 / -1) はこの関数の返り値型には
+    // 含めていない (スキーマ拡張は将来課題)。
+    case 'TREBLE_8VA': return { sign: 'G', line: 2 };
+    case 'TREBLE_8VB': return { sign: 'G', line: 2 };
     case 'BASS': return { sign: 'F', line: 4 };
     case 'ALTO': return { sign: 'C', line: 3 };
     case 'TENOR': return { sign: 'C', line: 4 };
     case 'PERCUSSION': return { sign: 'percussion', line: 2 };
+    default: {
+      // exhaustiveness check: HideClef に新値を追加したらここが型エラーになる
+      const _exhaustive: never = clef;
+      throw new Error(`unhandled clef: ${String(_exhaustive)}`);
+    }
   }
 }
 
