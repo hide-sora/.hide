@@ -8,10 +8,13 @@ export default defineConfig({
   publicDir: 'public',
   server: {
     port: 4326,
-    open: '/public/test_hide.html',
+    open: '/test_hide_mini.html',
     fs: {
       allow: ['.', './node_modules'],
     },
+  },
+  optimizeDeps: {
+    exclude: ['@napi-rs/canvas', 'pdfjs-dist'],
   },
   build: {
     lib: {

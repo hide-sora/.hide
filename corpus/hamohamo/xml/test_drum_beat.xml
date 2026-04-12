@@ -1,0 +1,435 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE score-partwise PUBLIC "-//Recordare//DTD MusicXML 4.0 Partwise//EN" "http://www.musicxml.org/dtds/partwise.dtd">
+<score-partwise version="4.0">
+  <work>
+    <work-title>Drum Beat Demo (with Rimshot)</work-title>
+  </work>
+  <identification>
+    <creator type="composer">Test</creator>
+  </identification>
+  <part-list>
+    <score-part id="P1">
+      <part-name>Drums</part-name>
+      <score-instrument id="P1-I1">
+        <instrument-name>Drumset</instrument-name>
+      </score-instrument>
+      <midi-instrument id="P1-I1">
+        <midi-channel>10</midi-channel>
+        <midi-program>1</midi-program>
+      </midi-instrument>
+    </score-part>
+  </part-list>
+  <part id="P1">
+    <!-- Measure 1: Basic Beat - Kick + HiHat + Snare -->
+    <measure number="1">
+      <attributes>
+        <divisions>4</divisions>
+        <time>
+          <beats>4</beats>
+          <beat-type>4</beat-type>
+        </time>
+        <clef>
+          <sign>percussion</sign>
+        </clef>
+      </attributes>
+      <direction placement="above">
+        <direction-type>
+          <metronome>
+            <beat-unit>quarter</beat-unit>
+            <per-minute>100</per-minute>
+          </metronome>
+        </direction-type>
+        <sound tempo="100"/>
+      </direction>
+      <!-- Beat 1: Kick + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Beat 2: Snare + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Beat 3: Kick + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+    </measure>
+
+    <!-- Measure 2: Rimshot pattern -->
+    <measure number="2">
+      <!-- Beat 1: Kick + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Beat 2: RIMSHOT + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Beat 3: Kick + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Beat 3.5: Kick + HiHat -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>G</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+    </measure>
+
+    <!-- Measure 3: Toms + Rimshot fill -->
+    <measure number="3">
+      <!-- Tom High -->
+      <note>
+        <unpitched>
+          <display-step>E</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Tom High -->
+      <note>
+        <unpitched>
+          <display-step>E</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Tom Mid -->
+      <note>
+        <unpitched>
+          <display-step>D</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Tom Mid -->
+      <note>
+        <unpitched>
+          <display-step>D</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Tom Low -->
+      <note>
+        <unpitched>
+          <display-step>A</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Tom Low -->
+      <note>
+        <unpitched>
+          <display-step>A</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Rimshot x2 -->
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+    </measure>
+
+    <!-- Measure 4: Crash + Kick ending -->
+    <measure number="4">
+      <!-- Crash + Kick -->
+      <note>
+        <unpitched>
+          <display-step>A</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <type>quarter</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <chord/>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <type>quarter</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- rest -->
+      <note>
+        <rest/>
+        <duration>4</duration>
+        <type>quarter</type>
+      </note>
+      <!-- Rimshot x2 -->
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <note>
+        <unpitched>
+          <display-step>C</display-step>
+          <display-octave>5</display-octave>
+        </unpitched>
+        <duration>2</duration>
+        <type>eighth</type>
+        <notehead>x</notehead>
+        <stem>up</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <!-- Kick -->
+      <note>
+        <unpitched>
+          <display-step>F</display-step>
+          <display-octave>4</display-octave>
+        </unpitched>
+        <duration>4</duration>
+        <type>quarter</type>
+        <stem>down</stem>
+        <instrument id="P1-I1"/>
+      </note>
+      <barline location="right">
+        <bar-style>light-heavy</bar-style>
+      </barline>
+    </measure>
+  </part>
+</score-partwise>

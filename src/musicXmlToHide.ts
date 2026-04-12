@@ -185,7 +185,7 @@ export function musicXmlToHide(
   for (let pi = 0; pi < parts.length; pi++) {
     const label = partLabels[pi];
     const cells = partOutputs[pi];
-    lines.push(`[${label}] ${cells.join(' ')}`);
+    lines.push(`[${label}]| ${cells.join(' | ')} |`);
   }
 
   return {
@@ -477,7 +477,7 @@ function parseMidAttributes(
 
   const fifths = parseIntFromTag(body, 'fifths');
   if (fifths !== undefined && fifths !== runningKeyFifths) {
-    tokens.push(`[K${fifths}]`);
+    tokens.push(`[K${fifthsToKeyName(fifths)}]`);
     newKeyFifths = fifths;
   }
 
@@ -556,6 +556,14 @@ function convertMeasureToHide(
     if (attrResult.newTimeNum !== undefined) newTimeNum = attrResult.newTimeNum;
     if (attrResult.newTimeDen !== undefined) newTimeDen = attrResult.newTimeDen;
     if (attrResult.newKeyFifths !== undefined) newKeyFifths = attrResult.newKeyFifths;
+  }
+
+  // ノートもレストも無い空小節 → 全小節休符を補完
+  if (noteTokens.length === 0) {
+    const restTok = durationToRest(
+      measureRestUnits(header), header, warnings, diagnostics, partIndex, measureIndex, 0, false,
+    );
+    if (restTok) noteTokens.push({ pos: 0, token: restTok });
   }
 
   // フェーズ 5: position 順にマージして組み立て
@@ -786,6 +794,10 @@ function collectTupletGroup(
     gi = result.nextIndex;
   }
 
+  // メンバーが空なら連符トークンを出さない (全て休符だった場合など)
+  if (memberTokens.length === 0) {
+    return { token: '', nextIndex: i };
+  }
   const token = `${totalDuration}(${memberTokens.join(' ')})`;
   return { token, nextIndex: i };
 }
@@ -962,14 +974,14 @@ function fifthsToKeyName(fifths: number): string {
   const names: Record<number, string> = {
     '-7': 'Cb', '-6': 'Gb', '-5': 'Db', '-4': 'Ab', '-3': 'Eb',
     '-2': 'Bb', '-1': 'F', '0': 'C', '1': 'G', '2': 'D',
-    '3': 'A', '4': 'E', '5': 'B', '6': 'Fs', '7': 'Cs',
+    '3': 'A', '4': 'E', '5': 'B', '6': 'F#', '7': 'C#',
   };
   return names[String(fifths)] ?? 'C';
 }
 
 function barlineStyleToken(style: HideBarlineStyle): string {
   switch (style) {
-    case 'single': return ',,';
+    case 'single': return ',';
     case 'double': return ',,';
     case 'final': return ',,,';
     case 'repeatStart': return ',:';
@@ -989,10 +1001,16 @@ function detectDotsFromDuration(
   duration: number, header: ParsedHeader,
 ): { baseDur: number; dots: number } {
   const rawValues = [1, 2, 4, 8, 16, 32]; // rawAtDiv32: h, i, j, k, l, m
+  // まず完全一致を優先的に探す (dotted h と undotted j の衝突回避)
   for (const raw of rawValues) {
     const base = Math.round((raw * header.div) / 32);
     if (base <= 0) continue;
     if (base === duration) return { baseDur: base, dots: 0 };
+  }
+  // 完全一致なし → 付点を試す
+  for (const raw of rawValues) {
+    const base = Math.round((raw * header.div) / 32);
+    if (base <= 0) continue;
     if (Math.round(base * 1.5) === duration) return { baseDur: base, dots: 1 };
     if (Math.round(base * 1.75) === duration) return { baseDur: base, dots: 2 };
   }
@@ -1076,9 +1094,9 @@ function unitsToLengthChar(
 }
 
 function formatPitch(p: HidePitch, _keyFifths: number, slurStart: boolean = false): string {
-  // .hide パーサーは key signature を音符に適用しない。
-  // `F4` は常に F natural。F# にするには `F#4` と書く必要がある。
-  // そのため alter !== 0 なら常に明示的に臨時記号を出力する。
+  // .hide は実音ベース: F4 = F natural, Ab3 = A flat 3。
+  // key signature は音符のピッチに影響しない。
+  // alter !== 0 なら常に明示的に臨時記号を出力する。
   let accChar = '';
   if (p.alter === 1) accChar = '#';
   else if (p.alter === -1) accChar = 'b';
