@@ -17,7 +17,7 @@ import { compileHide } from './hideLoader';
 import { musicXmlToHide } from './musicXmlToHide';
 import { analyzeMatrix } from './hideMatrix';
 
-function pitchToString(p: { step: string; alter: -1 | 0 | 1; octave: number }): string {
+function pitchToString(p: { step: string; alter: number; octave: number }): string {
   const acc = p.alter === 1 ? '#' : p.alter === -1 ? 'b' : '';
   return `${p.step}${acc}${p.octave}`;
 }
@@ -54,7 +54,7 @@ describe('musicXmlToHide — basic round-trip via grid form', () => {
   });
 
   it('round-trips a 2-part 2-measure piece with mixed durations', () => {
-    // 4/4: 各小節 = 4分音符4個 = 32u 完全埋め
+    // 4/4: 各小節 = 4分音符4個 = 64u 完全埋め
     const original =
       '[1]| C5kC5kC5kC5k | D5kD5kD5kD5k |\n' +
       '[2]| C4jD4jE4jF4jG4jA4jB4jC5j | E4jF4jG4jA4jB4jC5jD5jE5j |';
@@ -87,8 +87,8 @@ describe('musicXmlToHide — chord (vertical) support', () => {
     const cell = matrix.measures[0].cells.get('1')!;
     // 和音なので 1 トークンに 3 ピッチ
     expect(cell.pitches.map(pitchToString)).toEqual(['C4', 'E4', 'G4']);
-    // duration は 1 全音符 = 32u
-    expect(cell.durationUnits).toBe(32);
+    // duration は 1 全音符 = 64u
+    expect(cell.durationUnits).toBe(64);
   });
 });
 
@@ -96,7 +96,7 @@ describe('musicXmlToHide — header preservation', () => {
   it('preserves time / key / divisions through round-trip (3/4, key sig 2 sharps)', () => {
     // 3/4 で 4分音符 3 個 = 1 小節
     const original =
-      '[CLEF:TREBLE TIME:3/4 KEY:2 DIV:32]\n' +
+      '[CLEF:TREBLE TIME:3/4 KEY:2 DIV:64]\n' +
       '[1]| F#5k C#5k D5k |\n' +
       '[2]| A4k  A4k  F#4k |';
     const { musicXml } = compileHide(original);
@@ -106,7 +106,7 @@ describe('musicXmlToHide — header preservation', () => {
     expect(header.timeNum).toBe(3);
     expect(header.timeDen).toBe(4);
     expect(header.keyFifths).toBe(2);
-    expect(header.div).toBe(32);
+    expect(header.div).toBe(64);
 
     // round-trip 後の matrix 構造を確認
     // .hide パーサーは key signature を音符に適用しないため、
@@ -117,17 +117,17 @@ describe('musicXmlToHide — header preservation', () => {
     expect(part1.pitches.map(pitchToString)).toEqual(['F#5', 'C#5', 'D5']);
   });
 
-  it('preserves accidentals against the key signature (Cn in D major)', () => {
-    // D major (key=2) で Cn (= ナチュラル化された C) を含むパート
+  it('preserves accidentals against the key signature (C* in D major)', () => {
+    // D major (key=2) で C* (= ナチュラル化された C) を含むパート
     // 4/4 で 4分音符 4 個 = 1 小節
     const original =
-      '[CLEF:TREBLE TIME:4/4 KEY:2 DIV:32]\n' +
-      '[1]| Cn5k D5k E5k F#5k |';
+      '[CLEF:TREBLE TIME:4/4 KEY:2 DIV:64]\n' +
+      '[1]| C*5k D5k E5k F#5k |';
     const { musicXml } = compileHide(original);
     const { hideSource, warnings } = musicXmlToHide(musicXml);
     expect(warnings).toEqual([]);
 
-    // .hide は臨時記号を常に明示する。C natural (alter=0) は 'C5' (n 不要)。
+    // .hide は臨時記号を常に明示する。C natural (alter=0) は 'C5' (* 不要)。
     // F# (alter=1) は 'F#5' と明示される。
     expect(hideSource).toMatch(/C5/);
     expect(hideSource).toMatch(/F#5/);
@@ -149,12 +149,12 @@ describe('musicXmlToHide — rest support', () => {
     const part1 = matrix.measures[0].cells.get('1')!;
     // pitches は休符を含まないので 2 音だけ
     expect(part1.pitches.map(pitchToString)).toEqual(['C4', 'C4']);
-    // duration は 4×k = 32u
-    expect(part1.durationUnits).toBe(32);
+    // duration は 4×k = 64u
+    expect(part1.durationUnits).toBe(64);
 
     const part2 = matrix.measures[0].cells.get('2')!;
     expect(part2.pitches).toEqual([]);
-    expect(part2.durationUnits).toBe(32);
+    expect(part2.durationUnits).toBe(64);
   });
 });
 
@@ -184,7 +184,7 @@ describe('compileHide — dynamic tempo / time signature (v1.9 Task C)', () => {
 
   it('emits mid-piece time signature change as new <attributes>', () => {
     // 4/4 で 1 小節打って → 3/4 に変更 → 1 小節打つ
-    // 3/4 = 24u → 4分音符 3 個 (3k)
+    // 3/4 = 48u → 4分音符 3 個 (3k)
     const { musicXml, warnings } = compileHide('[1] C5m , [M3/4] D5kE5kF5k ,');
     expect(warnings).toEqual([]);
     // 1 小節目: 4/4 (header) / 2 小節目: 3/4
@@ -194,7 +194,7 @@ describe('compileHide — dynamic tempo / time signature (v1.9 Task C)', () => {
   });
 
   it('warns when [M3/4] is inserted mid-measure', () => {
-    // 4/4 で 半音符 (16u) しか書いてないのに 3/4 に変更
+    // 4/4 で 半音符 (32u) しか書いてないのに 3/4 に変更
     const { warnings } = compileHide('[1] C5l [M3/4] D5l,');
     expect(warnings.some(w => /時間署名/.test(w))).toBe(true);
   });
@@ -414,13 +414,13 @@ describe('musicXmlToHide — barline vocabulary (v1.9 ,)', () => {
   });
 
   it('warns when `,` is placed before a measure is full', () => {
-    // 4/4 = 32u 必要なのに半分 (16u = C5l = 半音符1個) で `,` を打つ
+    // 4/4 = 64u 必要なのに半分 (32u = C5l = 半音符1個) で `,` を打つ
     const { warnings } = compileHide('[1] C5l ,');
     expect(warnings.some(w => /足りません/.test(w))).toBe(true);
   });
 
   it('does not warn when `,` is placed exactly at measure end', () => {
-    // 4/4 で 4分音符 4 個 = 32u ぴったり
+    // 4/4 で 4分音符 4 個 = 64u ぴったり
     const { warnings } = compileHide('[1] C5k C5k C5k C5k ,');
     expect(warnings).toEqual([]);
   });
@@ -438,13 +438,13 @@ describe('musicXmlToHide — slur support', () => {
 });
 
 describe('musicXmlToHide — staccato support', () => {
-  it('converts <staccato/> to uppercase duration letter', () => {
-    const original = '[1]| C5K C5k C5k C5k |';
+  it('converts <staccato/> to duration letter with s suffix', () => {
+    const original = '[1]| C5ks C5k C5k C5k |';
     const { musicXml } = compileHide(original);
     expect(musicXml).toMatch(/<staccato\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
-    // 大文字 K が出力される
-    expect(hideSource).toMatch(/C5K/);
+    // duration letter + s suffix が出力される
+    expect(hideSource).toMatch(/C5ks/);
   });
 });
 
@@ -541,21 +541,21 @@ describe('musicXmlToHide — articulation extensions', () => {
     expect(hideSource).toMatch(/C5k\^/);
   });
 
-  it('round-trips trill (k*)', () => {
-    const original = '[1]| C5k* C5k C5k C5k |';
+  it('round-trips trill (ktr)', () => {
+    const original = '[1]| C5ktr C5k C5k C5k |';
     const { musicXml } = compileHide(original);
     expect(musicXml).toMatch(/<trill-mark\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/C5k\*/);
+    expect(hideSource).toMatch(/C5ktr/);
   });
 
-  it('round-trips combined staccato+accent (K>)', () => {
-    const original = '[1]| C5K> C5k C5k C5k |';
+  it('round-trips combined staccato+accent (ks>)', () => {
+    const original = '[1]| C5ks> C5k C5k C5k |';
     const { musicXml } = compileHide(original);
     expect(musicXml).toMatch(/<staccato\/>/);
     expect(musicXml).toMatch(/<accent\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/C5K>/);
+    expect(hideSource).toMatch(/C5ks>/);
   });
 });
 
@@ -572,20 +572,20 @@ describe('musicXmlToHide — slur end', () => {
 });
 
 describe('musicXmlToHide — grace notes', () => {
-  it('round-trips grace note (~)', () => {
-    const original = '[1]| ~C5j D5m |';
+  it('round-trips grace note (`)', () => {
+    const original = '[1]| `C5j D5m |';
     const { musicXml } = compileHide(original);
     expect(musicXml).toMatch(/<grace\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/~C5/);
+    expect(hideSource).toMatch(/`C5/);
   });
 
-  it('round-trips acciaccatura (~~)', () => {
-    const original = '[1]| ~~C5j D5m |';
+  it('round-trips acciaccatura (``)', () => {
+    const original = '[1]| ``C5j D5m |';
     const { musicXml } = compileHide(original);
     expect(musicXml).toMatch(/<grace slash="yes"\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
-    expect(hideSource).toMatch(/~~C5/);
+    expect(hideSource).toMatch(/``C5/);
   });
 });
 

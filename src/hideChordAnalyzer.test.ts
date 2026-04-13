@@ -17,7 +17,7 @@ import type { HidePitch } from './hideTypes';
 function p(name: string, octave: number): HidePitch {
   const step = name[0].toUpperCase() as HidePitch['step'];
   const acc = name.slice(1);
-  const alter: -1 | 0 | 1 = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+  const alter: HidePitch['alter'] = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
   return { step, octave, alter };
 }
 
@@ -499,7 +499,7 @@ describe('analyzeChords — end-to-end', () => {
   });
 
   it('handles measures with chord changes within measure', () => {
-    // 4/4 DIV=32: each cell has 2 half notes (16u each)
+    // 4/4 DIV=64: each cell has 2 half notes (32u each)
     // Beat 1-2: C E G (Cmaj), Beat 3-4: D F A (Dm)
     const source =
       '[1]| C5l D5l |\n' +
@@ -569,7 +569,7 @@ describe('formatCRow', () => {
   });
 
   it('merges consecutive same-chord beats into longer duration', () => {
-    // 4/4 DIV=32: 4 parts, 3 distinct pc (C E G), bass=C3 → Cmaj root position
+    // 4/4 DIV=64: 4 parts, 3 distinct pc (C E G), bass=C3 → Cmaj root position
     const source =
       '[1]| C5m |\n' +
       '[2]| E4m |\n' +
@@ -616,7 +616,7 @@ describe('analyzeChords — beat detail', () => {
   });
 
   it('onset snapshots include note start times', () => {
-    // Part 1 changes at beat 3 (offset 16)
+    // Part 1 changes at beat 3 (offset 32)
     const source =
       '[1]| C5l D5l |\n' +
       '[2]| E4m |\n' +
@@ -625,10 +625,10 @@ describe('analyzeChords — beat detail', () => {
     const result = analyzeChords(matrix);
     const m = result.measures[0];
 
-    // Beat 3 (index 2) should have an onset at offset 16
+    // Beat 3 (index 2) should have an onset at offset 32
     const beat2 = m.beats[2];
-    const hasOnsetAt16 = beat2.onsets.some(o => o.offsetUnits === 16);
-    expect(hasOnsetAt16).toBe(true);
+    const hasOnsetAt32 = beat2.onsets.some(o => o.offsetUnits === 32);
+    expect(hasOnsetAt32).toBe(true);
   });
 });
 

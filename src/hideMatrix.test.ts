@@ -1,5 +1,5 @@
 /**
- * hideMatrix.test.ts — v1.9 matrix mode 単体テスト
+ * hideMatrix.test.ts — v2.0 matrix mode 単体テスト
  *
  * vitest による回帰スイート。public/test_hide.html のブラウザ手動テストの
  * うち、matrix mode 部分を自動化したもの。stream mode 側も最低限のスモーク
@@ -16,14 +16,14 @@ import {
   tokenize,
 } from './index';
 
-function pitchToString(p: { step: string; alter: -1 | 0 | 1; octave: number }): string {
+function pitchToString(p: { step: string; alter: number; octave: number }): string {
   const acc = p.alter === 1 ? '#' : (p.alter === -1 ? 'b' : '');
   return `${p.step}${acc}${p.octave}`;
 }
 
 describe('hideMatrix — analyzeMatrix() basic structure', () => {
   it('parses 4-part grid form (B.5) into 3 measures × 4 parts with no issues', () => {
-    // 各 cell = 全音符 1 個 = 32u = 4/4 DIV=32 で full measure
+    // 各 cell = 全音符 1 個 = 64u = 4/4 DIV=64 で full measure
     // (matrix mode は cell.durationUnits == unitsPerMeasure を要求するため、
     //  C5k 等の partial cell を使うと measureDurationMismatch が出てしまう)
     const source =
@@ -64,7 +64,7 @@ describe('hideMatrix — analyzeMatrix() basic structure', () => {
   });
 
   it('handles stream-form (no barlines) as a single measure', () => {
-    // 各パート = 全音符 1 個 = 32u (= full measure for 4/4 DIV=32)
+    // 各パート = 全音符 1 個 = 64u (= full measure for 4/4 DIV=64)
     const source = '[1]C5m[2]E4m[3]G4m[4]C3m';
     const { matrix, issues } = analyzeMatrix(source);
     expect(matrix.partLabels).toEqual(['1', '2', '3', '4']);
@@ -75,7 +75,7 @@ describe('hideMatrix — analyzeMatrix() basic structure', () => {
   });
 
   it('treats source without any part declaration as a single "M" part', () => {
-    // 各 cell = 全音符 1 個 = 32u = full measure
+    // 各 cell = 全音符 1 個 = 64u = full measure
     const source = 'C4m|D4m|E4m|F4m';
     const { matrix, issues } = analyzeMatrix(source);
     expect(matrix.partLabels).toEqual(['M']);
@@ -86,7 +86,7 @@ describe('hideMatrix — analyzeMatrix() basic structure', () => {
 
 describe('hideMatrix — measure consistency checking', () => {
   it('reports measureDurationMismatch when a measure has different durations', () => {
-    // [1] の2小節目 = 半音符 1 個 (16u)、他は全音符 (32u = full measure)
+    // [1] の2小節目 = 半音符 1 個 (32u)、他は全音符 (64u = full measure)
     // → 2小節目だけが unitsPerMeasure 不一致 + パート間不一致
     const source =
       '[1]| C4m | C4l | C4m |\n' +
@@ -107,12 +107,12 @@ describe('hideMatrix — measure consistency checking', () => {
   });
 
   it('reports measureDurationMismatch against header expected for partial cell', () => {
-    // ヘッダー (4/4 DIV=32) は 32u 期待だが [1] は 8u (= 4分音符 1 個) しか書いてない
-    // → 「ヘッダーの期待値 32u と一致しません」というメッセージが出る
+    // ヘッダー (4/4 DIV=64) は 64u 期待だが [1] は 16u (= 4分音符 1 個) しか書いてない
+    // → 「ヘッダーの期待値 64u と一致しません」というメッセージが出る
     const source = '[1]| C4k |';
     const { issues } = analyzeMatrix(source);
     const headerMismatch = issues.find(
-      i => i.kind === 'measureDurationMismatch' && /期待値 32u/.test(i.message),
+      i => i.kind === 'measureDurationMismatch' && /期待値 64u/.test(i.message),
     );
     expect(headerMismatch).toBeDefined();
   });
@@ -143,7 +143,7 @@ describe('hideMatrix — barline tokenization compatibility', () => {
 
   it('parser ignores barlines in stream mode (existing test ⑥ compat)', () => {
     const result = compileHide(
-      '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]\n; これはコメント\nC4k D4k | E4k F4k\nG4k A4k | B4k C5k',
+      '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:64]\n; これはコメント\nC4k D4k | E4k F4k\nG4k A4k | B4k C5k',
     );
     expect(result.partsCount).toBe(1);
     // 8 音 + 1 小節分の rest 補完なし → 8 notes spanning 2 measures
@@ -170,7 +170,7 @@ describe('hideMatrix — legacy SATB removal still rejected', () => {
   });
 });
 
-describe('hideMatrix — [GRID N] removed in v1.9', () => {
+describe('hideMatrix — [GRID N] removed since v1.9', () => {
   it('treats [GRID4] as an unknown meta (no special handling)', () => {
     // [GRID N] の特別扱いは v1.9 で削除されたので、未知のメタとしてエラーになる
     expect(() => tokenize('[GRID4][1]C4k')).toThrow();

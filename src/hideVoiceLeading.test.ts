@@ -18,7 +18,7 @@ import { analyzeVoiceLeading, analyzeMatrix } from './index';
 
 describe('analyzeVoiceLeading — voice deltas', () => {
   it('computes signed semitone deltas per part across 1 transition', () => {
-    // 4/4 DIV=32, 2 measures, 2 parts. C5→D5 (+2), G4→A4 (+2)
+    // 4/4 DIV=64, 2 measures, 2 parts. C5→D5 (+2), G4→A4 (+2)
     const source = '[1]| C5m | D5m |\n[2]| G4m | A4m |';
     const { matrix } = analyzeMatrix(source);
     const { transitions } = analyzeVoiceLeading(matrix);
@@ -114,9 +114,9 @@ describe('analyzeVoiceLeading — voice crossing', () => {
 
 describe('analyzeVoiceLeading — large leap', () => {
   it('flags single-voice leap > 1 octave', () => {
-    // [1] C4 → Cs5 = +13 半音 (octave 超)
+    // [1] C4 → C#5 = +13 半音 (octave 超)
     // [2] は離して E3 にしておく (voice crossing が出ないように)
-    const source = '[1]| C4m | Cs5m |\n[2]| E3m | E3m  |';
+    const source = '[1]| C4m | C#5m |\n[2]| E3m | E3m  |';
     const { matrix } = analyzeMatrix(source);
     const { observations } = analyzeVoiceLeading(matrix);
     const leap = observations.find(o => o.kind === 'largeLeap');

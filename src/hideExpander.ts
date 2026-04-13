@@ -47,11 +47,15 @@ export function expand(ast: HideAst): HideExpandResult {
   type PartTokenIn = HideNoteToken | HideRestToken | HideMetaToken | HideMeasureBarrierToken | HideTupletGroup;
   const partsMap = new Map<string, PartTokenIn[]>();
   let currentPart = 'M';
+  const partInstrumentNames = new Map<string, string>();
   for (const tok of flat) {
     if (tok.kind === 'meta' && tok.type === 'partSwitch' && tok.partLabel) {
       currentPart = tok.partLabel;
       if (!partsMap.has(currentPart)) {
         partsMap.set(currentPart, []);
+      }
+      if (tok.instrumentName) {
+        partInstrumentNames.set(currentPart, tok.instrumentName);
       }
       continue;
     }
@@ -101,19 +105,23 @@ export function expand(ast: HideAst): HideExpandResult {
 
   // 3. パート単位で HidePart 構造を作る
   const parts: HidePart[] = [];
-  for (const [label, tokens] of partsMap.entries()) {
+  let globalGroupIdSeed = 1; // D3: groupId をグローバルに一意にする
+  for (const [label, tokens] of Array.from(partsMap.entries())) {
     // デフォルトパート "M" は「単一パートのみ」のスコアで使うので、表示名・MIDIは S と同じにする
     const isDefault = label === 'M';
+    const instrName = partInstrumentNames.get(label);
     const meta = isDefault
       ? { partId: 'P_M', displayName: 'Voice', midiProgram: 53 }
-      : getPartMeta(label);
+      : getPartMeta(label, instrName);
     // 連符 (HideTupletGroup) は中身を展開して単純なノート・休符列にする (M2-F)
-    const expandedTokens = expandTuplets(tokens);
+    const { tokens: expandedTokens, nextGroupId } = expandTuplets(tokens, globalGroupIdSeed);
+    globalGroupIdSeed = nextGroupId;
     parts.push({
       label,
       displayName: meta.displayName,
       partId: meta.partId,
       midiProgram: meta.midiProgram,
+      instrumentName: instrName,
       tokens: expandedTokens,
     });
   }
@@ -176,14 +184,18 @@ function flattenRepeats(tokens: HideToken[]): Exclude<HideToken, HideRepeatGroup
  */
 function expandTuplets(
   tokens: (HideNoteToken | HideRestToken | HideMetaToken | HideMeasureBarrierToken | HideTupletGroup)[],
-): (HideNoteToken | HideRestToken | HideMetaToken | HideMeasureBarrierToken)[] {
+  groupIdSeed: number = 1,
+): { tokens: (HideNoteToken | HideRestToken | HideMetaToken | HideMeasureBarrierToken)[]; nextGroupId: number } {
   const out: (HideNoteToken | HideRestToken | HideMetaToken | HideMeasureBarrierToken)[] = [];
-  let groupIdSeed = 1;
+  let seed = groupIdSeed;
   for (const tok of tokens) {
     if (tok.kind === 'tuplet') {
-      const groupId = groupIdSeed++;
+      const groupId = seed++;
       const targetUnits = tok.targetUnits;
       const totalMembers = tok.members.length;
+      // グループ全体で統一的に normalNotes を計算 (最初のメンバーの額面を基準)
+      const refDuration = tok.members[0]?.durationUnits || 1;
+      const normalNotes = Math.max(1, Math.round(targetUnits / refDuration));
       for (let i = 0; i < totalMembers; i++) {
         const member = tok.members[i];
         const annotated: HideNoteToken | HideRestToken = {
@@ -193,6 +205,7 @@ function expandTuplets(
             memberIndex: i,
             totalMembers,
             targetUnits,
+            normalNotes,
           },
         };
         out.push(annotated);
@@ -201,7 +214,7 @@ function expandTuplets(
       out.push(tok);
     }
   }
-  return out;
+  return { tokens: out, nextGroupId: seed };
 }
 
 /**
@@ -225,6 +238,7 @@ function alignPartLengths(parts: HidePart[], header: HideHeader, warnings: strin
     const remaining = alignedTarget - partLengths[i];
     if (remaining <= 0) continue;
     // 残り unit を全休符1小節ずつ追加 (端数は最後の rest で吸収)
+    // 各休符の後に measureBarrier を挿入して bucketize が小節を認識できるようにする
     let left = remaining;
     while (left > 0) {
       const r = Math.min(left, unitsPerMeasure);
@@ -232,8 +246,11 @@ function alignPartLengths(parts: HidePart[], header: HideHeader, warnings: strin
         kind: 'rest',
         durationUnits: r,
         dots: 0,
-        staccato: false,
         tieToNext: false,
+      });
+      parts[i].tokens.push({
+        kind: 'measureBarrier',
+        style: 'single',
       });
       left -= r;
     }
@@ -253,7 +270,12 @@ function sumPlayableUnits(
   let sum = 0;
   for (const t of tokens) {
     if (t.kind === 'note' || t.kind === 'rest') {
-      sum += t.durationUnits;
+      // tuplet メンバーは額面 durationUnits ではなく実際の演奏長を使う
+      if (t.tupletMember) {
+        sum += t.tupletMember.targetUnits / t.tupletMember.totalMembers;
+      } else {
+        sum += t.durationUnits;
+      }
     }
   }
   return sum;

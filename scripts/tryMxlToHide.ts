@@ -19,8 +19,8 @@ try {
   console.log(`[keys] ${Object.keys(result)}`);
   console.log(`[header] ${result.header ? Object.keys(result.header) : 'none'}`);
   console.log(`[hideSource len] ${result.hideSource?.length ?? 0}`);
-  console.log(`[parts] ${result.header?.parts?.length ?? '?'}`);
-  console.log(`[measures] ${result.measures?.length ?? '?'}`);
+  console.log(`[parts] ${result.partsCount}`);
+  console.log(`[measures] ${result.measuresCount}`);
 
   const outPath = resolved.replace(/\.(xml|musicxml)$/i, '.hide');
   writeFileSync(outPath, result.hideSource, 'utf8');

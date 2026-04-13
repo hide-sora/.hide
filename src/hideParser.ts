@@ -1,11 +1,11 @@
 /**
- * hideParser.ts — レクサー出力を AST に変換する
+ * hideParser.ts — レクサー出力を AST に変換する (v2.0)
  *
- * M2: 再帰下降パーサで反復 (:body:N) と連符 (N(...)) を構造化する。
+ * 再帰下降パーサで反復 (:body:N) と連符 (N(...)) を構造化する。
  *   - 反復: HideRepeatGroup を生成 (ネスト対応)
  *   - 連符: HideTupletGroup を生成 (中身はノート/休符のみ)
  *   - パート切替・移調・調変更などのメタはそのまま AST に乗せる (expander が処理)
- *   - tempo / time の動的変更だけは未対応として警告
+ *   - v2.0: Rule B 廃止 — パーサにはもともと Rule B ロジックなし (レクサーが絶対音高を出力)
  */
 
 import type {
@@ -111,8 +111,7 @@ function parseBody(
       }
 
       case 'meta': {
-        // tempo / time の inline meta は v1.9 で astToMusicXML が小節境界化と
-        // <direction> 出力を担当する。ここでは AST に載せるだけ。
+        // メタコマンドはそのまま AST に載せる。コンパイラが処理。
         body.push(tok);
         ctx.cursor++;
         break;
@@ -160,14 +159,13 @@ function parseBody(
       }
 
       case 'barline': {
-        // 小節線 `|` は v1.9 matrix mode が読むためのマーカー。
-        // 通常の (stream mode) パース層では何も生成せずに skip する。
+        // `|` はセル区切り (matrix mode) / whitespace。パース層では skip。
         ctx.cursor++;
         break;
       }
 
       case 'measureBarrier': {
-        // 小節終止マーカー `.`/`..`/`.../`.:/`:.` (v1.9 後期)
+        // 小節線 `,`/`,,`/`,,,`/`,:` /`:,`/`,-`/`,.` (v2.0)
         // hard barrier として AST に乗せ、bucketize / musicXmlToHide / OMR で処理する。
         body.push(tok);
         ctx.cursor++;

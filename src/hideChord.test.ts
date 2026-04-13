@@ -15,7 +15,7 @@ function p(name: string, octave: number): HidePitch {
   // "C", "C#", "Db", "F#", ...
   const step = name[0].toUpperCase() as HidePitch['step'];
   const acc = name.slice(1);
-  const alter: -1 | 0 | 1 = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
+  const alter: HidePitch['alter'] = acc === '#' ? 1 : acc === 'b' ? -1 : 0;
   return { step, octave, alter };
 }
 

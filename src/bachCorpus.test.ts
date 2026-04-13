@@ -123,7 +123,7 @@ describe('Bach corpus — forward conversion round-trip', () => {
 
     // (2) hideSource が non-empty + 構造健全性
     expect(result.hideSource.length).toBeGreaterThan(0);
-    expect(result.hideSource).toMatch(/^\[CLEF:/);
+    expect(result.hideSource).toMatch(/^\[/);
     expect(result.hideSource).toMatch(/\[1\]/);
     expect(result.partsCount).toBeGreaterThanOrEqual(1);
     expect(result.measuresCount).toBeGreaterThanOrEqual(1);
