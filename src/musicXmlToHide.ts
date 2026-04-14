@@ -134,33 +134,10 @@ export function musicXmlToHide(
   // 3. 1小節目の <attributes> からヘッダーを抽出 (最初のパート優先)
   const header = extractHeader(parts[0].body, warnings, diagnostics, 0);
 
-  // 4. 各パートを per-measure cell に分解 → .hide token 列に変換
+  // 4. 小節番号ベースで全パートを揃えて変換（欠落小節は全休符で補完）
   const partLabels = assignPartLabels(parts.length, opts.partLabels);
-  const partOutputs: string[][] = []; // partOutputs[pi] = [cell_str_per_measure]
-  let maxMeasureCount = 0;
-  for (let pi = 0; pi < parts.length; pi++) {
-    const cells = convertPartToCells(parts[pi].body, header, warnings, diagnostics, pi);
-    partOutputs.push(cells);
-    if (cells.length > maxMeasureCount) maxMeasureCount = cells.length;
-  }
-
-  // 4b. パート間の measure count 不整合を構造化 diagnostic として emit
-  //     **silent padding はしない** — 短いパートはそのまま短い grid 行として出力する。
-  //     下流の analyzeMatrix() が `measureCountMismatch` を re-detect する。
-  //     LLM レビュー層はこの diagnostic + 元 PDF 画像を見て修正候補を返す。
-  for (let pi = 0; pi < parts.length; pi++) {
-    if (partOutputs[pi].length < maxMeasureCount) {
-      const got = partOutputs[pi].length;
-      diagnostics.push({
-        kind: 'partMeasureCountMismatch',
-        partIndex: pi,
-        partLabel: partLabels[pi],
-        got,
-        expected: maxMeasureCount,
-      });
-      warnings.push(`パート#${pi + 1} (${partLabels[pi]}) は ${got}/${maxMeasureCount} 小節 — 入力 MusicXML の不整合の可能性`);
-    }
-  }
+  const partOutputs = convertAllPartsAligned(parts, header, warnings, diagnostics, partLabels);
+  const maxMeasureCount = partOutputs.length > 0 ? partOutputs[0].length : 0;
 
   // 5. .hide ソース組み立て (grid form)
   const lines: string[] = [];
@@ -353,41 +330,96 @@ interface MeasureEvent {
   body: string;
 }
 
-function convertPartToCells(
-  partBody: string,
+/** 小節番号ベースで全パートを揃えて変換する。欠落小節は全休符で補完。 */
+function convertAllPartsAligned(
+  parts: { id: string; body: string }[],
   header: ParsedHeader,
   warnings: string[],
   diagnostics: MusicXmlToHideDiagnostic[],
-  partIndex: number,
-): string[] {
-  // 各 <measure> を個別に処理
-  const measures = extractMeasures(partBody);
-  const out: string[] = [];
+  partLabels: string[],
+): string[][] {
+  // 1. 全パートから番号付き小節を抽出
+  const allPartMeasures = parts.map(p => extractNumberedMeasures(p.body));
 
-  // 中途変更の検出用: running state
-  let runningTimeNum = header.timeNum;
-  let runningTimeDen = header.timeDen;
-  let runningKeyFifths = header.keyFifths;
-
-  for (let mi = 0; mi < measures.length; mi++) {
-    const result = convertMeasureToHide(
-      measures[mi], header, warnings, diagnostics, partIndex, mi,
-      runningTimeNum, runningTimeDen, runningKeyFifths,
-    );
-    out.push(result.tokens);
-    if (result.newTimeNum !== undefined) runningTimeNum = result.newTimeNum;
-    if (result.newTimeDen !== undefined) runningTimeDen = result.newTimeDen;
-    if (result.newKeyFifths !== undefined) runningKeyFifths = result.newKeyFifths;
+  // 2. 小節番号のマスターリスト構築（全パートの和集合、数値順ソート）
+  const allNums = new Set<string>();
+  for (const pm of allPartMeasures) {
+    for (const m of pm) allNums.add(m.num);
   }
-  return out;
+  const masterNumbers = [...allNums].sort((a, b) => {
+    const na = parseFloat(a);
+    const nb = parseFloat(b);
+    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  // 3. 各パートを小節番号→本体のマップ化し、マスター順で変換
+  const partOutputs: string[][] = [];
+  for (let pi = 0; pi < parts.length; pi++) {
+    const measureMap = new Map<string, string>();
+    for (const m of allPartMeasures[pi]) {
+      measureMap.set(m.num, m.body);
+    }
+
+    const out: string[] = [];
+    let runningTimeNum = header.timeNum;
+    let runningTimeDen = header.timeDen;
+    let runningKeyFifths = header.keyFifths;
+
+    for (let mi = 0; mi < masterNumbers.length; mi++) {
+      const body = measureMap.get(masterNumbers[mi]);
+      if (body !== undefined) {
+        // 通常の小節変換
+        const result = convertMeasureToHide(
+          body, header, warnings, diagnostics, pi, mi,
+          runningTimeNum, runningTimeDen, runningKeyFifths,
+        );
+        out.push(result.tokens);
+        if (result.newTimeNum !== undefined) runningTimeNum = result.newTimeNum;
+        if (result.newTimeDen !== undefined) runningTimeDen = result.newTimeDen;
+        if (result.newKeyFifths !== undefined) runningKeyFifths = result.newKeyFifths;
+      } else {
+        // 欠落小節 → 全休符で補完
+        const restTok = durationToRest(
+          measureRestUnits(header, runningTimeNum, runningTimeDen),
+          header, warnings, diagnostics, pi, mi, 0,
+        );
+        out.push(`${restTok || 'Rn'} ,`);
+      }
+    }
+
+    // 欠落があった場合 diagnostic を emit
+    if (allPartMeasures[pi].length < masterNumbers.length) {
+      const missing = masterNumbers.length - allPartMeasures[pi].length;
+      diagnostics.push({
+        kind: 'partMeasureCountMismatch',
+        partIndex: pi,
+        partLabel: partLabels[pi],
+        got: allPartMeasures[pi].length,
+        expected: masterNumbers.length,
+      });
+      warnings.push(`パート#${pi + 1} (${partLabels[pi]}) は ${missing} 小節が欠落 — 全休符で補完`);
+    }
+
+    partOutputs.push(out);
+  }
+  return partOutputs;
 }
 
-function extractMeasures(partBody: string): string[] {
-  const out: string[] = [];
-  const re = /<measure[^>]*>([\s\S]*?)<\/measure>/g;
+interface NumberedMeasure {
+  num: string;
+  body: string;
+}
+
+function extractNumberedMeasures(partBody: string): NumberedMeasure[] {
+  const out: NumberedMeasure[] = [];
+  const re = /<measure\b([^>]*)>([\s\S]*?)<\/measure>/g;
   let m: RegExpExecArray | null;
+  let seq = 0;
   while ((m = re.exec(partBody)) !== null) {
-    out.push(m[1]);
+    seq++;
+    const numMatch = /number="([^"]*)"/.exec(m[1]);
+    out.push({ num: numMatch ? numMatch[1] : String(seq), body: m[2] });
   }
   return out;
 }
@@ -1293,17 +1325,21 @@ function unitsToLengthChar(
   return best.char;
 }
 
-function formatPitch(p: HidePitch, _keyFifths: number, slurStart: boolean = false): string {
+function formatPitch(p: HidePitch, keyFifths: number, slurStart: boolean = false): string {
   // v2.0: 毎回絶対音高。#/b/*/x/bb で臨時記号を表記。
+  // alter=0 でも調号が暗黙に♯/♭を付ける音名の場合は * (ナチュラル) を明示する。
   let accChar = '';
   switch (p.alter) {
     case 2: accChar = 'x'; break;
     case 1: accChar = '#'; break;
     case -1: accChar = 'b'; break;
     case -2: accChar = 'bb'; break;
-    // 0 = natural — 調号と異なる場合は * を使うが、
-    // v2.0 では source 側で常に絶対音高を書くので、
-    // naturalが調号デフォルトと同じなら省略。
+    default: {
+      // alter=0 だが調号が暗黙に変化させる音名なら * を付ける
+      const implied = keySigImpliedAlter(p.step, keyFifths);
+      if (implied !== 0) accChar = '*';
+      break;
+    }
   }
   const step = slurStart ? p.step.toLowerCase() : p.step;
   return `${step}${accChar}${p.octave}`;

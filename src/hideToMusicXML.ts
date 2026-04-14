@@ -295,6 +295,27 @@ export function partitionedAstToMusicXML(
                 out.push('        </measure-style>');
                 out.push('      </attributes>');
                 break;
+              case 'fingering':
+                if (tok.fingerNumber) emitTextDirection(out, tok.fingerNumber, false);
+                break;
+              case 'stringNumber':
+                if (tok.stringNum !== undefined) emitTextDirection(out, String(tok.stringNum), false);
+                break;
+              case 'swing':
+                emitTextDirection(out, 'Swing', false);
+                break;
+              case 'straight':
+                emitTextDirection(out, 'Straight', false);
+                break;
+              case 'multiRest':
+                if (tok.multiRestCount !== undefined) {
+                  out.push('      <attributes>');
+                  out.push('        <measure-style>');
+                  out.push(`          <multiple-rest>${tok.multiRestCount}</multiple-rest>`);
+                  out.push('        </measure-style>');
+                  out.push('      </attributes>');
+                }
+                break;
             }
           } else if (tok.kind === 'rest') {
             emitRest(out, tok, tupletScale, pendingBreath);
@@ -991,19 +1012,31 @@ function emitNote(
     out.push('        <voice>1</voice>');
     out.push(`        <type>${noteType}</type>`);
     for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
-    // DTD 順序: dot → accidental → time-modification
+    // v2.1: notehead type (diamond/x/slash/triangle)
+    if (tok.notehead) {
+      const nhMap: Record<string, string> = {
+        diamond: 'diamond', x: 'x', slash: 'slash', triangle: 'triangle',
+      };
+      out.push(`        <notehead>${nhMap[tok.notehead]}</notehead>`);
+    }
+    // DTD 順序: dot → notehead → accidental → time-modification
     if (accDisplay.showAccidental) {
       const accName = alterToAccidentalName(p.alter);
       if (accName) out.push(`        <accidental>${accName}</accidental>`);
     }
     if (timeModXml) out.push(timeModXml);
 
-    // v2.0: expanded articulations + ornaments
+    // v2.1: expanded articulations + ornaments + technical
     const isFirstChordNote = i === 0;
     const hasArticulations = tok.staccato || tok.staccatissimo || tok.accent ||
-      tok.tenuto || tok.marcato || (isFirstChordNote && pendingBreath !== null);
-    const hasOrnaments = tok.trill || tok.mordent || tok.turn || tok.tremolo > 0;
-    const hasTechnical = tok.arpeggio || tok.glissando;
+      tok.tenuto || tok.marcato ||
+      tok.fall || tok.doit || tok.plop || tok.scoop ||
+      (isFirstChordNote && pendingBreath !== null);
+    const hasOrnaments = tok.trill || tok.mordent || tok.invertedMordent ||
+      tok.turn || tok.invertedTurn || tok.tremolo > 0 || tok.vibrato;
+    const hasTechnical = tok.arpeggio || tok.glissando ||
+      tok.upBow || tok.downBow || tok.harmonicNote || tok.snapPizz ||
+      tok.stopped || tok.bend;
     // tie の <notations>/<tied> は全 chord note に必要、それ以外は first note のみ
     const wantNotations = tok.tieToNext || tok.tieFromPrev || (isFirstChordNote && (
       hasArticulations || hasOrnaments || hasTechnical || tok.fermata ||
@@ -1018,7 +1051,11 @@ function emitNote(
       if (isFirstChordNote && tok.slurEnd) out.push('          <slur type="stop" number="1"/>');
       if (tupletStartStop.start) out.push('          <tuplet type="start" number="1"/>');
       if (tupletStartStop.stop) out.push('          <tuplet type="stop" number="1"/>');
-      if (isFirstChordNote && tok.fermata) out.push('          <fermata type="upright"/>');
+      if (isFirstChordNote && tok.fermata) {
+        const shape = tok.fermataType === 'short' ? ' shape="angled"'
+          : tok.fermataType === 'long' ? ' shape="square"' : '';
+        out.push(`          <fermata type="upright"${shape}/>`);
+      }
       if (isFirstChordNote && hasArticulations) {
         out.push('          <articulations>');
         if (tok.staccato) out.push('            <staccato/>');
@@ -1026,6 +1063,10 @@ function emitNote(
         if (tok.accent) out.push('            <accent/>');
         if (tok.tenuto) out.push('            <tenuto/>');
         if (tok.marcato) out.push('            <strong-accent type="up"/>');
+        if (tok.fall) out.push('            <falloff/>');
+        if (tok.doit) out.push('            <doit/>');
+        if (tok.plop) out.push('            <plop/>');
+        if (tok.scoop) out.push('            <scoop/>');
         if (pendingBreath === 'breath-mark') out.push('            <breath-mark/>');
         if (pendingBreath === 'caesura') out.push('            <caesura/>');
         out.push('          </articulations>');
@@ -1034,9 +1075,22 @@ function emitNote(
         out.push('          <ornaments>');
         if (tok.trill) out.push('            <trill-mark/>');
         if (tok.mordent) out.push('            <mordent/>');
+        if (tok.invertedMordent) out.push('            <inverted-mordent/>');
         if (tok.turn) out.push('            <turn/>');
+        if (tok.invertedTurn) out.push('            <inverted-turn/>');
         if (tok.tremolo > 0) out.push(`            <tremolo type="single">${tok.tremolo}</tremolo>`);
+        if (tok.vibrato) out.push('            <wavy-line type="start"/>');
         out.push('          </ornaments>');
+      }
+      if (isFirstChordNote && hasTechnical) {
+        out.push('          <technical>');
+        if (tok.upBow) out.push('            <up-bow/>');
+        if (tok.downBow) out.push('            <down-bow/>');
+        if (tok.harmonicNote) out.push('            <harmonic><natural/></harmonic>');
+        if (tok.snapPizz) out.push('            <snap-pizzicato/>');
+        if (tok.stopped) out.push('            <stopped/>');
+        if (tok.bend) out.push('            <bend><bend-alter>1</bend-alter></bend>');
+        out.push('          </technical>');
       }
       if (isFirstChordNote && tok.arpeggio) out.push('          <arpeggiate/>');
       if (isFirstChordNote && tok.glissando) out.push('          <glissando line-type="wavy" type="start">gliss.</glissando>');

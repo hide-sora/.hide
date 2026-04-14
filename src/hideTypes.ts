@@ -86,33 +86,57 @@ export type HideUnit = number;
 // ============================================================
 
 /**
- * 音符トークン (v2.0)
+ * ノートヘッド変形 (v2.1: Finale Broadway 全グリフ対応)
+ *  !d=diamond, !x=X, !/=slash, !t=triangle
+ */
+export type HideNoteheadType = 'diamond' | 'x' | 'slash' | 'triangle';
+
+/**
+ * 音符トークン (v2.1)
  *
  * アーティキュレーション: サフィックス方式に統一
  *   s=staccato, S=staccatissimo, >=accent, ^=marcato, -=tenuto, ~=fermata
+ *   V=upBow, W=downBow, O=harmonic, X=snapPizz, T=stopped
  *
  * オーナメント: 2文字サフィックス
- *   tr=trill, mr=mordent, tn=turn, z1/z2/z3=tremolo, ar=arpeggio, gl=glissando
+ *   tr=trill, mr=mordent, MR=invertedMordent, tn=turn, TN=invertedTurn,
+ *   z1/z2/z3=tremolo, ar=arpeggio, gl=glissando,
+ *   jf=fall, jd=doit, jp=plop, js=scoop, bn=bend, vb=vibrato
  */
 export interface HideNoteToken {
   kind: 'note';
   pitches: HidePitch[];
   durationUnits: HideUnit;
   dots: number;                // 0-3 (v2.0: 三重付点対応)
+  notehead?: HideNoteheadType; // v2.1: !d !x !/ !t
   // Articulations (suffix)
   staccato: boolean;           // s
   staccatissimo: boolean;      // S (v2.0 新規)
   accent: boolean;             // >
   tenuto: boolean;             // -
   fermata: boolean;            // ~
+  fermataType?: 'short' | 'long';  // v2.1: ~s=short, ~l=long (fermata=true 時のみ)
   marcato: boolean;            // ^
+  upBow: boolean;              // V (v2.1)
+  downBow: boolean;            // W (v2.1)
+  harmonicNote: boolean;       // O (v2.1)
+  snapPizz: boolean;           // X (v2.1)
+  stopped: boolean;            // T (v2.1)
   // Ornaments (2-char suffix)
   trill: boolean;              // tr
   mordent: boolean;            // mr (v2.0 新規)
+  invertedMordent: boolean;    // MR (v2.1: 上方モルデント)
   turn: boolean;               // tn (v2.0 新規)
+  invertedTurn: boolean;       // TN (v2.1: 逆ターン)
   tremolo: 0 | 1 | 2 | 3;     // z1/z2/z3 (v2.0 新規) 0=none
   arpeggio: boolean;           // ar (v2.0 新規)
   glissando: boolean;          // gl (v2.0 新規)
+  fall: boolean;               // jf (v2.1: jazz fall)
+  doit: boolean;               // jd (v2.1: jazz doit)
+  plop: boolean;               // jp (v2.1: jazz plop)
+  scoop: boolean;              // js (v2.1: jazz scoop)
+  bend: boolean;               // bn (v2.1: guitar bend)
+  vibrato: boolean;            // vb (v2.1: vibrato)
   // Connections
   slurStart: boolean;          // 小文字音名
   slurEnd: boolean;            // _ サフィックス
@@ -154,8 +178,8 @@ export interface HideMetaToken {
     | 'dynamics'
     | 'volta'
     | 'voltaEnd'         // v2.0: [/V1] [/V2] — volta bracket close
-    | 'segno'            // v2.0: [segno]
-    | 'coda'             // v2.0: [coda]
+    | 'segno'            // v2.0: [segno] / v2.1: [segno2] variant
+    | 'coda'             // v2.0: [coda] / v2.1: [coda2] variant
     | 'jump'             // v2.0: [DC] [DS] [DC.fine] etc.
     | 'fine'             // v2.0: [fine]
     | 'tocoda'           // v2.0: [tocoda]
@@ -167,7 +191,12 @@ export interface HideMetaToken {
     | 'ottava'           // v2.0: [8va] [8vb] [15ma] [15mb] [8va/] etc.
     | 'pedal'            // v2.0: [ped] [ped/]
     | 'chord'            // v2.0: [C:Cmaj7]
-    | 'measureRepeat';   // v2.0: [%]
+    | 'measureRepeat'    // v2.0: [%]
+    | 'fingering'        // v2.1: [F:1] [F:p]
+    | 'stringNumber'     // v2.1: [S:1]
+    | 'swing'            // v2.1: [swing]
+    | 'straight'         // v2.1: [straight]
+    | 'multiRest';       // v2.1: [mmr:8]
   // tempo
   bpm?: number;
   // tempoText
@@ -201,6 +230,14 @@ export interface HideMetaToken {
   pedalEnd?: boolean;          // true for [ped/]
   // chord symbol
   chordSymbol?: string;        // "Cmaj7", "Am7", "G7/B"
+  // v2.1: segno/coda variant
+  variant?: boolean;           // true for [segno2] / [coda2]
+  // v2.1: fingering
+  fingerNumber?: string;       // "1"-"5", "p" (thumb)
+  // v2.1: string number
+  stringNum?: number;          // 1-6+
+  // v2.1: multi-measure rest
+  multiRestCount?: number;     // number of measures
 }
 
 /**

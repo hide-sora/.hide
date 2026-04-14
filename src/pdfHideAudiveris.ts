@@ -17,9 +17,20 @@ import {
 } from 'node:fs';
 import { join, basename } from 'node:path';
 import { tmpdir } from 'node:os';
-import { promisify } from 'node:util';
 
-const execFileAsync = promisify(execFile);
+// promisify(execFile) のインライン実装 (node:util を避けてブラウザバンドルを安全にする)
+function execFileAsync(
+  file: string,
+  args: readonly string[],
+  options?: { timeout?: number; maxBuffer?: number },
+): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    execFile(file, args as string[], { maxBuffer: 50 * 1024 * 1024, ...options }, (err, stdout, stderr) => {
+      if (err) reject(Object.assign(err, { stdout, stderr }));
+      else resolve({ stdout, stderr });
+    });
+  });
+}
 
 // ============================================================
 // 公開型

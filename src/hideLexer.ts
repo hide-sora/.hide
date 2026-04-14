@@ -19,6 +19,7 @@ import type {
   HideNoteToken,
   HideRestToken,
   HideMetaToken,
+  HideNoteheadType,
   HidePitch,
   HideBarlineStyle,
 } from './hideTypes';
@@ -580,10 +581,12 @@ function parseMetaCommand(inner: string, pos: HideSourcePosition, source: string
     }
   }
 
-  // --- v2.0 navigation commands ---
+  // --- v2.0 navigation commands (v2.1: segno2/coda2 variants) ---
   const lowerInner = inner.toLowerCase();
   if (lowerInner === 'segno') return { kind: 'meta', type: 'segno' };
+  if (lowerInner === 'segno2') return { kind: 'meta', type: 'segno', variant: true };
   if (lowerInner === 'coda') return { kind: 'meta', type: 'coda' };
+  if (lowerInner === 'coda2') return { kind: 'meta', type: 'coda', variant: true };
   if (lowerInner === 'fine') return { kind: 'meta', type: 'fine' };
   if (lowerInner === 'tocoda') return { kind: 'meta', type: 'tocoda' };
   if (inner === 'DC') return { kind: 'meta', type: 'jump', jumpType: 'DC' };
@@ -605,9 +608,11 @@ function parseMetaCommand(inner: string, pos: HideSourcePosition, source: string
     return { kind: 'meta', type: 'expression', textContent: inner.slice(5) };
   }
 
-  // --- v2.0 breath/caesura ---
+  // --- v2.0 breath/caesura, v2.1 swing/straight ---
   if (lowerInner === 'breath') return { kind: 'meta', type: 'breath' };
   if (lowerInner === 'caesura') return { kind: 'meta', type: 'caesura' };
+  if (lowerInner === 'swing') return { kind: 'meta', type: 'swing' };
+  if (lowerInner === 'straight') return { kind: 'meta', type: 'straight' };
 
   // --- v2.0 ottava ---
   {
@@ -628,6 +633,29 @@ function parseMetaCommand(inner: string, pos: HideSourcePosition, source: string
   // --- v2.0 chord symbol [C:Cmaj7] ---
   if (inner.startsWith('C:')) {
     return { kind: 'meta', type: 'chord', chordSymbol: inner.slice(2) };
+  }
+
+  // --- v2.1 fingering [F:1] [F:p] ---
+  if (inner.startsWith('F:')) {
+    return { kind: 'meta', type: 'fingering', fingerNumber: inner.slice(2) };
+  }
+
+  // --- v2.1 string number [S:1] ---
+  if (inner.startsWith('S:')) {
+    const n = parseInt(inner.slice(2), 10);
+    if (Number.isFinite(n) && n > 0) {
+      return { kind: 'meta', type: 'stringNumber', stringNum: n };
+    }
+    throw new HideParseError(`不正な弦番号: [${inner}]`, pos, source);
+  }
+
+  // --- v2.1 multi-measure rest [mmr:8] ---
+  if (inner.startsWith('mmr:')) {
+    const n = parseInt(inner.slice(4), 10);
+    if (Number.isFinite(n) && n > 0) {
+      return { kind: 'meta', type: 'multiRest', multiRestCount: n };
+    }
+    throw new HideParseError(`不正な多小節休符: [${inner}]`, pos, source);
   }
 
   const head = inner[0];
@@ -797,6 +825,16 @@ function tryParseNote(
 
     pitches.push({ step, octave, alter: alter as HidePitch['alter'] });
 
+    // v2.1: Notehead modifier !d !x !/ !t (between pitches and duration)
+    let noteheadType: HideNoteheadType | undefined;
+    if (source[i] === '!' && i + 1 < source.length) {
+      const nhChar = source[i + 1];
+      if (nhChar === 'd') { noteheadType = 'diamond'; i += 2; }
+      else if (nhChar === 'x') { noteheadType = 'x'; i += 2; }
+      else if (nhChar === '/') { noteheadType = 'slash'; i += 2; }
+      else if (nhChar === 't') { noteheadType = 'triangle'; i += 2; }
+    }
+
     // Check for duration letter
     // v2.0: 'g'/'G' is both a note name and a duration letter (64th note).
     // Disambiguate: if followed by a digit (octave) or accidental, it's a note name for a chord.
@@ -813,25 +851,41 @@ function tryParseNote(
       while (source[i] === '.' && dots < 3) { dots++; i++; }
       const durationUnits = applyDots(baseUnits, dots);
 
-      // v2.0 articulation/ornament suffixes
+      // v2.0 articulation/ornament suffixes (v2.1: expanded)
       let staccato = false, staccatissimo = false, accent = false;
       let tenuto = false, fermata = false, marcato = false;
-      let trill = false, mordent = false, turn = false;
+      let fermataType: 'short' | 'long' | undefined;
+      let upBow = false, downBow = false, harmonicNote = false;
+      let snapPizz = false, stopped = false;
+      let trill = false, mordent = false, invertedMordent = false;
+      let turn = false, invertedTurn = false;
       let tremolo: 0 | 1 | 2 | 3 = 0;
       let arpeggio = false, glissando = false, slurEnd = false;
+      let fall = false, doit = false, plop = false, scoop = false;
+      let bend = false, vibrato = false;
 
       let scanning = true;
       while (scanning && i < source.length) {
-        // 2-char ornaments first
+        // 2-char ornaments/articulations first (order matters: ~s/~l before ~)
         const two = source.slice(i, i + 2);
         if (two === 'tr') { trill = true; i += 2; continue; }
+        if (two === 'MR') { invertedMordent = true; i += 2; continue; }
         if (two === 'mr') { mordent = true; i += 2; continue; }
+        if (two === 'TN') { invertedTurn = true; i += 2; continue; }
         if (two === 'tn') { turn = true; i += 2; continue; }
         if (two === 'z1') { tremolo = 1; i += 2; continue; }
         if (two === 'z2') { tremolo = 2; i += 2; continue; }
         if (two === 'z3') { tremolo = 3; i += 2; continue; }
         if (two === 'ar') { arpeggio = true; i += 2; continue; }
         if (two === 'gl') { glissando = true; i += 2; continue; }
+        if (two === 'jf') { fall = true; i += 2; continue; }
+        if (two === 'jd') { doit = true; i += 2; continue; }
+        if (two === 'jp') { plop = true; i += 2; continue; }
+        if (two === 'js') { scoop = true; i += 2; continue; }
+        if (two === 'bn') { bend = true; i += 2; continue; }
+        if (two === 'vb') { vibrato = true; i += 2; continue; }
+        if (two === '~s') { fermata = true; fermataType = 'short'; i += 2; continue; }
+        if (two === '~l') { fermata = true; fermataType = 'long'; i += 2; continue; }
 
         // 1-char articulations
         switch (source[i]) {
@@ -842,6 +896,11 @@ function tryParseNote(
           case '-': tenuto = true; i++; break;
           case '~': fermata = true; i++; break;
           case '_': slurEnd = true; i++; break;
+          case 'V': upBow = true; i++; break;
+          case 'W': downBow = true; i++; break;
+          case 'O': harmonicNote = true; i++; break;
+          case 'X': snapPizz = true; i++; break;
+          case 'T': stopped = true; i++; break;
           default: scanning = false;
         }
       }
@@ -852,18 +911,33 @@ function tryParseNote(
           pitches,
           durationUnits: Math.round(durationUnits),
           dots,
+          notehead: noteheadType,
           staccato,
           staccatissimo,
           accent,
           tenuto,
           fermata,
+          fermataType,
           marcato,
+          upBow,
+          downBow,
+          harmonicNote,
+          snapPizz,
+          stopped,
           trill,
           mordent,
+          invertedMordent,
           turn,
+          invertedTurn,
           tremolo,
           arpeggio,
           glissando,
+          fall,
+          doit,
+          plop,
+          scoop,
+          bend,
+          vibrato,
           slurStart,
           slurEnd,
           tieToNext: false,

@@ -29,7 +29,7 @@ export default defineConfig({
     // (デフォルトの emptyOutDir=true だと .d.ts が消えて consumer 側の型解決が失敗する)
     emptyOutDir: false,
     rollupOptions: {
-      external: ['@napi-rs/canvas', '@anthropic-ai/sdk', 'pdfjs-dist', 'pdfjs-dist/build/pdf.worker.mjs'],
+      external: [/^node:/, '@napi-rs/canvas', '@anthropic-ai/sdk', 'pdfjs-dist', 'pdfjs-dist/build/pdf.worker.mjs'],
       output: {
         // 単一ファイル出力 (dynamic import chunk を作らない)
         inlineDynamicImports: true,
