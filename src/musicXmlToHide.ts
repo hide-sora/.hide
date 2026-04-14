@@ -123,7 +123,12 @@ export function musicXmlToHide(
   const diagnostics: MusicXmlToHideDiagnostic[] = [];
 
   // 1. コメント除去
-  const stripped = xml.replace(/<!--[\s\S]*?-->/g, '');
+  let stripped = xml.replace(/<!--[\s\S]*?-->/g, '');
+
+  // 1b. score-timewise → score-partwise 変換
+  if (/<score-timewise/.test(stripped)) {
+    stripped = timewiseToPartwise(stripped);
+  }
 
   // 2. <part> ブロック抽出 (ID 付き)
   const parts = extractParts(stripped);
@@ -173,13 +178,45 @@ interface RawPart {
 
 function extractParts(xml: string): RawPart[] {
   const out: RawPart[] = [];
-  // <part id="X"> ... </part> を非貪欲に拾う
-  const re = /<part\s+id="([^"]+)"\s*>([\s\S]*?)<\/part>/g;
+  // <part id="X"> ... </part> を非貪欲に拾う（シングル/ダブルクォート、スペース対応）
+  const re = /<part\s+id\s*=\s*["']([^"']+)["']\s*>([\s\S]*?)<\/part>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
     out.push({ id: m[1], body: m[2] });
   }
   return out;
+}
+
+/** score-timewise 形式を score-partwise 形式に変換 */
+function timewiseToPartwise(xml: string): string {
+  const measureRe = /<measure\b([^>]*?)>([\s\S]*?)<\/measure>/g;
+  const partMap = new Map<string, string[]>();
+  const partOrder: string[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = measureRe.exec(xml)) !== null) {
+    const numMatch = /number\s*=\s*["']([^"']*)["']/.exec(m[1]);
+    const num = numMatch ? numMatch[1] : String(partOrder.length + 1);
+    const measureInner = m[2];
+
+    // 各 <measure> 内の <part> を抽出
+    const partRe = /<part\s+id\s*=\s*["']([^"']+)["']\s*>([\s\S]*?)<\/part>/g;
+    let pm: RegExpExecArray | null;
+    while ((pm = partRe.exec(measureInner)) !== null) {
+      const pid = pm[1];
+      if (!partMap.has(pid)) {
+        partMap.set(pid, []);
+        partOrder.push(pid);
+      }
+      partMap.get(pid)!.push(`<measure number="${num}">${pm[2]}</measure>`);
+    }
+  }
+
+  // partwise 形式として再構築
+  const partsXml = partOrder
+    .map(id => `<part id="${id}">${partMap.get(id)!.join('')}</part>`)
+    .join('');
+  return `<score-partwise>${partsXml}</score-partwise>`;
 }
 
 // ============================================================
@@ -347,31 +384,48 @@ function convertAllPartsAligned(
     for (const m of pm) allNums.add(m.num);
   }
   const masterNumbers = [...allNums].sort((a, b) => {
-    const na = parseFloat(a);
-    const nb = parseFloat(b);
-    if (!isNaN(na) && !isNaN(nb)) return na - nb;
+    // "7" → [7, 0], "7§1" → [7, 1] としてソート
+    const [baseA, suffA] = a.split('§');
+    const [baseB, suffB] = b.split('§');
+    const na = parseFloat(baseA);
+    const nb = parseFloat(baseB);
+    if (!isNaN(na) && !isNaN(nb)) {
+      if (na !== nb) return na - nb;
+      return (parseInt(suffA) || 0) - (parseInt(suffB) || 0);
+    }
     return a.localeCompare(b);
   });
 
   // 3. 各パートを小節番号→本体のマップ化し、マスター順で変換
   const partOutputs: string[][] = [];
   for (let pi = 0; pi < parts.length; pi++) {
+    // パートごとの divisions を抽出（パート間で異なる場合に対応）
+    const partHeader = { ...header };
+    const partAttrMatch = /<attributes>([\s\S]*?)<\/attributes>/.exec(parts[pi].body);
+    if (partAttrMatch) {
+      const partDiv = parseIntFromTag(partAttrMatch[1], 'divisions');
+      if (partDiv !== undefined && partDiv !== header.divisionsXml) {
+        partHeader.divisionsXml = partDiv;
+        partHeader.div = partDiv * 4;
+      }
+    }
+
     const measureMap = new Map<string, string>();
     for (const m of allPartMeasures[pi]) {
       measureMap.set(m.num, m.body);
     }
 
     const out: string[] = [];
-    let runningTimeNum = header.timeNum;
-    let runningTimeDen = header.timeDen;
-    let runningKeyFifths = header.keyFifths;
+    let runningTimeNum = partHeader.timeNum;
+    let runningTimeDen = partHeader.timeDen;
+    let runningKeyFifths = partHeader.keyFifths;
 
     for (let mi = 0; mi < masterNumbers.length; mi++) {
       const body = measureMap.get(masterNumbers[mi]);
       if (body !== undefined) {
         // 通常の小節変換
         const result = convertMeasureToHide(
-          body, header, warnings, diagnostics, pi, mi,
+          body, partHeader, warnings, diagnostics, pi, mi,
           runningTimeNum, runningTimeDen, runningKeyFifths,
         );
         out.push(result.tokens);
@@ -381,8 +435,8 @@ function convertAllPartsAligned(
       } else {
         // 欠落小節 → 全休符で補完
         const restTok = durationToRest(
-          measureRestUnits(header, runningTimeNum, runningTimeDen),
-          header, warnings, diagnostics, pi, mi, 0,
+          measureRestUnits(partHeader, runningTimeNum, runningTimeDen),
+          partHeader, warnings, diagnostics, pi, mi, 0,
         );
         out.push(`${restTok || 'Rn'} ,`);
       }
@@ -413,13 +467,43 @@ interface NumberedMeasure {
 
 function extractNumberedMeasures(partBody: string): NumberedMeasure[] {
   const out: NumberedMeasure[] = [];
-  const re = /<measure\b([^>]*)>([\s\S]*?)<\/measure>/g;
+  // 通常の <measure ...>...</measure> と自己閉じ <measure ... /> の両方にマッチ
+  const re = /<measure\b([^>]*?)(?:\s*\/\s*>|>([\s\S]*?)<\/measure>)/g;
   let m: RegExpExecArray | null;
   let seq = 0;
+  const countByNum = new Map<string, number>();
+
+  function addMeasure(rawNum: string, body: string) {
+    const occ = countByNum.get(rawNum) ?? 0;
+    countByNum.set(rawNum, occ + 1);
+    // 同じ番号の重複出現にサフィックスを付与（volta等）
+    const key = occ === 0 ? rawNum : `${rawNum}§${occ}`;
+    out.push({ num: key, body });
+  }
+
   while ((m = re.exec(partBody)) !== null) {
     seq++;
-    const numMatch = /number="([^"]*)"/.exec(m[1]);
-    out.push({ num: numMatch ? numMatch[1] : String(seq), body: m[2] });
+    const attrs = m[1];
+    const body = m[2] ?? ''; // 自己閉じ → 空本体
+    // number 属性の柔軟な抽出（シングル/ダブルクォート、スペース対応）
+    const numMatch = /number\s*=\s*["']([^"']*)["']/.exec(attrs);
+    const rawNum = numMatch ? numMatch[1] : String(seq);
+
+    // <multiple-rest>N</multiple-rest> の展開
+    const multiRestMatch = /<multiple-rest[^>]*>(\d+)<\/multiple-rest>/.exec(body);
+    if (multiRestMatch) {
+      const count = parseInt(multiRestMatch[1], 10);
+      const baseNum = parseFloat(rawNum);
+      // 最初の小節はそのまま（attributes 等を保持）
+      addMeasure(rawNum, body);
+      // 残りの小節を空本体で展開（convertMeasureToHide が全休符を補完）
+      for (let i = 1; i < count; i++) {
+        const expandedNum = !isNaN(baseNum) ? String(baseNum + i) : `${rawNum}+${i}`;
+        addMeasure(expandedNum, '');
+      }
+    } else {
+      addMeasure(rawNum, body);
+    }
   }
   return out;
 }
@@ -436,6 +520,22 @@ function extractMeasureEvents(measureBody: string): MeasureEvent[] {
   let m: RegExpExecArray | null;
   while ((m = noteRe.exec(measureBody)) !== null) {
     events.push({ pos: m.index, kind: 'note', body: m[1] });
+  }
+
+  // <forward> → voice=1 の暗黙休符として扱う（多声パートの隙間を補完）
+  const fwdRe = /<forward>([\s\S]*?)<\/forward>/g;
+  while ((m = fwdRe.exec(measureBody)) !== null) {
+    const fwdBody = m[1];
+    const dur = parseIntFromTag(fwdBody, 'duration');
+    const voice = parseIntFromTag(fwdBody, 'voice');
+    // voice 未指定 or voice=1 のみ暗黙休符として追加
+    if (dur && dur > 0 && (!voice || voice === 1)) {
+      events.push({
+        pos: m.index,
+        kind: 'note',
+        body: `<rest/><duration>${dur}</duration><voice>1</voice>`,
+      });
+    }
   }
 
   // <direction> 要素 (テンポ・強弱)
