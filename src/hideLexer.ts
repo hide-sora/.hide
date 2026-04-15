@@ -560,7 +560,7 @@ function parseMetaCommand(inner: string, pos: HideSourcePosition, source: string
     }
   }
 
-  // --- partSwitch+clef: [1T] [2B] [3T8] [4T-8] ---
+  // --- partSwitch+clef: [1T] [2B] [3T8] [4T-8] [1:Piano] [2Pe:Drums] ---
   {
     const m = inner.match(/^(\d+)(.+)$/);
     if (m) {
@@ -573,6 +573,19 @@ function parseMetaCommand(inner: string, pos: HideSourcePosition, source: string
           partLabel: labelPart,
           instrumentName: rest.slice(1),
         };
+      }
+      // v2.1: clef+name combo: [3B:Tenor] [2Pe:Drums]
+      const colonIdx = rest.indexOf(':');
+      if (colonIdx > 0) {
+        const clefPart = rest.slice(0, colonIdx);
+        const namePart = rest.slice(colonIdx + 1);
+        const clef = tryParseBareClef(clefPart);
+        if (clef !== null) {
+          return {
+            kind: 'meta', type: 'partSwitch',
+            partLabel: labelPart, clef, instrumentName: namePart,
+          };
+        }
       }
       const clefOnly = tryParseBareClef(rest);
       if (clefOnly !== null) {

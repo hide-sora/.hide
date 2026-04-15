@@ -127,9 +127,9 @@ describe('musicXmlToHide — header preservation', () => {
     const { hideSource, warnings } = musicXmlToHide(musicXml);
     expect(warnings).toEqual([]);
 
-    // .hide は臨時記号を常に明示する。C natural (alter=0) は 'C5' (* 不要)。
+    // .hide は臨時記号を常に明示する。D major で C natural → C*5 (ナチュラル明示)。
     // F# (alter=1) は 'F#5' と明示される。
-    expect(hideSource).toMatch(/C5/);
+    expect(hideSource).toMatch(/C\*5/);
     expect(hideSource).toMatch(/F#5/);
   });
 });
@@ -263,10 +263,10 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
       expect(mismatch.got).toBe(2);
       expect(mismatch.expected).toBe(3);
     }
-    // hideSource は短いまま (silent padding なし) → 下流の analyzeMatrix が
-    // measureCountMismatch を re-detect するので二重に LLM 用 signal が出る
+    // M2H は欠落小節を全休符で補完するため、hideSource は全パート同一長。
+    // analyzeMatrix は小節数の不一致を検出しない (diagnostic は M2H 側で emit 済み)。
     const { issues } = analyzeMatrix(hideSource);
-    expect(issues.some(i => i.kind === 'measureCountMismatch')).toBe(true);
+    expect(issues.some(i => i.kind === 'measureCountMismatch')).toBe(false);
   });
 
   it('emits multipleAttributes diagnostic when <attributes> appears more than once', () => {
@@ -326,8 +326,8 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     expect(hideSource).toMatch(/\)/);
   });
 
-  it('emits nonStandardDuration diagnostic on a duration that does not map to a base length', () => {
-    // duration=5 は基本音価 (h/i/j/k/l/m) にも付点にもマッチしない
+  it('decomposes nonStandardDuration into tied chain (M2H tie decomposition)', () => {
+    // duration=5 は基本音価にマッチしない → M2H は tied chain に分解 (i+h = 4+1 = 5)
     const xml = `<?xml version="1.0"?>
 <score-partwise>
   <part-list><score-part id="P1"/></part-list>
@@ -338,14 +338,10 @@ describe('musicXmlToHide — structured diagnostics (LLM review pipeline)', () =
     </measure>
   </part>
 </score-partwise>`;
-    const { diagnostics } = musicXmlToHide(xml);
-    const nsd = diagnostics.find(d => d.kind === 'nonStandardDuration');
-    expect(nsd).toBeDefined();
-    if (nsd && nsd.kind === 'nonStandardDuration') {
-      expect(nsd.partIndex).toBe(0);
-      expect(nsd.measureIndex).toBe(0);
-      expect(nsd.durationUnits).toBe(5);
-    }
+    const { hideSource } = musicXmlToHide(xml);
+    // 5u at DIV=32: greedy decompose → C5i...+C5g (triple-dotted 16th=4u + 64th=1u = 5u)
+    // tied chain が出ることを確認 (+ が含まれる)
+    expect(hideSource).toMatch(/C5[a-n].*\+.*C5[a-n]/);
   });
 
   it('warnings string array still mirrors diagnostics for human readability', () => {
@@ -596,5 +592,227 @@ describe('musicXmlToHide — volta brackets', () => {
     expect(musicXml).toMatch(/<ending number="1" type="start"\/>/);
     const { hideSource } = musicXmlToHide(musicXml);
     expect(hideSource).toMatch(/\[V1\]/);
+  });
+});
+
+// ============================================================
+// パーカッション譜の変換テスト
+// ============================================================
+
+describe('musicXmlToHide — percussion', () => {
+  /** ヘルパー: 最小限のパーカッション MusicXML を生成 */
+  function makePercussionXml(measures: string, divisions = 2): string {
+    return `<?xml version="1.0"?>
+<score-partwise>
+  <part-list>
+    <score-part id="P1"><part-name>Drums</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>${divisions}</divisions>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>percussion</sign><line>2</line></clef>
+      </attributes>
+      ${measures}
+    </measure>
+  </part>
+</score-partwise>`;
+  }
+
+  it('converts unpitched notes to correct display-step/octave without accidentals', () => {
+    // キック (F4) + スネア (C5) + ハイハット (G5) の基本パターン
+    const xml = makePercussionXml(`
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>G</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>A</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+    `);
+    const { hideSource, warnings } = musicXmlToHide(xml);
+    expect(hideSource).toMatch(/CLEF:PERCUSSION/);
+    // パーカッションでは臨時記号なし — 調号による # b * が付かない
+    expect(hideSource).toMatch(/F4k/);
+    expect(hideSource).toMatch(/C5k/);
+    expect(hideSource).toMatch(/G5k/);
+    expect(hideSource).toMatch(/A5k/);
+    // # b * が付かないことを確認
+    expect(hideSource).not.toMatch(/F#4|F\*4|Fb4/);
+  });
+
+  it('does not apply key signature accidentals to unpitched notes', () => {
+    // KEY:2 (D major) で F と C は通常 # が暗黙適用される
+    // パーカッションでは適用されてはいけない
+    const xml = `<?xml version="1.0"?>
+<score-partwise>
+  <part-list>
+    <score-part id="P1"><part-name>Drums</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <key><fifths>2</fifths></key>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>percussion</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>4</duration><voice>1</voice><type>half</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>4</duration><voice>1</voice><type>half</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const { hideSource } = musicXmlToHide(xml);
+    // F4 は F#4 にならない、C5 は C#5 にならない
+    expect(hideSource).toMatch(/F4l/);
+    expect(hideSource).toMatch(/C5l/);
+    expect(hideSource).not.toMatch(/F#|C#/);
+  });
+
+  it('parses <notehead> elements (x, slash, diamond, triangle)', () => {
+    const xml = makePercussionXml(`
+      <note>
+        <unpitched><display-step>G</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+        <notehead>x</notehead>
+      </note>
+      <note>
+        <unpitched><display-step>E</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+        <notehead>diamond</notehead>
+      </note>
+      <note>
+        <unpitched><display-step>A</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+        <notehead>slash</notehead>
+      </note>
+      <note>
+        <unpitched><display-step>B</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+        <notehead>triangle</notehead>
+      </note>
+    `);
+    const { hideSource } = musicXmlToHide(xml);
+    expect(hideSource).toMatch(/G5!xk/);    // x notehead
+    expect(hideSource).toMatch(/E5!dk/);    // diamond
+    expect(hideSource).toMatch(/A4!\/k/);   // slash
+    expect(hideSource).toMatch(/B4!tk/);    // triangle
+  });
+
+  it('emits per-part [Pe] clef when only one part is percussion', () => {
+    // 2パート: 歌 (treble) + パーカッション
+    const xml = `<?xml version="1.0"?>
+<score-partwise>
+  <part-list>
+    <score-part id="P1"><part-name>Voice</part-name></score-part>
+    <score-part id="P2"><part-name>Drums</part-name></score-part>
+  </part-list>
+  <part id="P1">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>G</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <pitch><step>C</step><octave>5</octave></pitch>
+        <duration>8</duration><voice>1</voice><type>whole</type>
+      </note>
+    </measure>
+  </part>
+  <part id="P2">
+    <measure number="1">
+      <attributes>
+        <divisions>2</divisions>
+        <time><beats>4</beats><beat-type>4</beat-type></time>
+        <clef><sign>percussion</sign><line>2</line></clef>
+      </attributes>
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+    </measure>
+  </part>
+</score-partwise>`;
+    const { hideSource, partsCount } = musicXmlToHide(xml);
+    expect(partsCount).toBe(2);
+    // ヘッダーは TREBLE (最初のパートから)
+    expect(hideSource).not.toMatch(/CLEF:PERCUSSION/);
+    // パート2 は [2Pe] or [2Pe:Drums] で percussion clef 宣言 (M2H はパート名を含む)
+    expect(hideSource).toMatch(/\[2Pe/);
+    // パーカッションパートに F4k C5k が出る
+    const percLine = hideSource.split('\n').find(l => l.includes('[2Pe'));
+    expect(percLine).toMatch(/F4k/);
+    expect(percLine).toMatch(/C5k/);
+  });
+
+  it('handles percussion-only score (header CLEF:PERCUSSION)', () => {
+    const xml = makePercussionXml(`
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>8</duration><voice>1</voice><type>whole</type>
+      </note>
+    `);
+    const { hideSource, header } = musicXmlToHide(xml);
+    expect(header.clef).toBe('PERCUSSION');
+    expect(hideSource).toMatch(/CLEF:PERCUSSION/);
+  });
+
+  it('round-trips percussion through analyzeMatrix', () => {
+    const xml = makePercussionXml(`
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>F</display-step><display-octave>4</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+      <note>
+        <unpitched><display-step>C</display-step><display-octave>5</display-octave></unpitched>
+        <duration>2</duration><voice>1</voice><type>quarter</type>
+      </note>
+    `);
+    const { hideSource } = musicXmlToHide(xml);
+    const { matrix, issues } = analyzeMatrix(hideSource);
+    expect(issues).toEqual([]);
+    expect(matrix.measures).toHaveLength(1);
+    // 4つの四分音符
+    const cells = [...matrix.measures[0].cells.values()];
+    const allPitches = cells.flatMap(c => c.pitches.map(pitchToString));
+    expect(allPitches).toContain('F4');
+    expect(allPitches).toContain('C5');
   });
 });

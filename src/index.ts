@@ -72,12 +72,15 @@ export type {
   VoiceLeadingObservationKind,
 } from './hideVoiceLeading';
 
-// v1.9 MusicXML → .hide 逆変換 (Bach corpus 取り込み + LLM レビュー pipeline)
-export { musicXmlToHide } from './musicXmlToHide';
+// M2H: MusicXML → .hide v2.1 完全変換
+export { musicXmlToHide, m2h } from './musicXmlToHide';
 export type {
   MusicXmlToHideOptions,
   MusicXmlToHideResult,
   MusicXmlToHideDiagnostic,
+  MusicXmlToHideOptions as M2HOptions,
+  MusicXmlToHideResult as M2HResult,
+  MusicXmlToHideDiagnostic as M2HDiagnostic,
 } from './musicXmlToHide';
 
 // ============================================================
@@ -251,6 +254,7 @@ export type {
   HideUnit,
   HidePart,
   HidePartitionedAst,
+  HideNoteheadType,
   PartMeta,
 } from './hideTypes';
 

@@ -318,16 +318,16 @@ export function partitionedAstToMusicXML(
                 break;
             }
           } else if (tok.kind === 'rest') {
-            emitRest(out, tok, tupletScale, pendingBreath);
+            emitRest(out, tok, tupletScale, header.div, pendingBreath);
             pendingBreath = null;
           } else if (tok.kind === 'note') {
-            emitNote(out, tok, newKeyFifths, measureMemory, tupletScale, pendingBreath);
+            emitNote(out, tok, newKeyFifths, measureMemory, tupletScale, header.div, pendingBreath);
             pendingBreath = null;
           }
         }
         const remainder = bucket.unitsPerMeasure - bucket.totalUnits;
         if (remainder > 0) {
-          emitFillRest(out, remainder, tupletScale);
+          emitFillRest(out, remainder, tupletScale, header.div);
         }
       }
       // 右端バーライン (`..`/`.../`:.`) + volta end
@@ -961,6 +961,7 @@ function emitNote(
   keyFifths: number,
   measureMemory: Map<string, number>,
   tupletScale: number,
+  div: number,
   pendingBreath: 'breath-mark' | 'caesura' | null = null,
 ): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
@@ -968,7 +969,7 @@ function emitNote(
     : tok.dots === 2 ? tok.durationUnits / 1.75
     : tok.dots === 1 ? tok.durationUnits / 1.5
     : tok.durationUnits;
-  const noteType = unitsToNoteType(Math.round(baseUnits));
+  const noteType = unitsToNoteType(Math.round(baseUnits), div);
 
   let timeModXml: string | null = null;
   let tupletStartStop = { start: false, stop: false };
@@ -1118,7 +1119,7 @@ function alterToAccidentalName(alter: number): string | null {
   }
 }
 
-function emitRest(out: string[], tok: HideRestToken, tupletScale: number, pendingBreath: 'breath-mark' | 'caesura' | null = null): void {
+function emitRest(out: string[], tok: HideRestToken, tupletScale: number, div: number, pendingBreath: 'breath-mark' | 'caesura' | null = null): void {
   const emittedDur = getEmittedDuration(tok, tupletScale);
   const baseUnits = tok.dots === 3 ? tok.durationUnits / 1.875
     : tok.dots === 2 ? tok.durationUnits / 1.75
@@ -1128,7 +1129,7 @@ function emitRest(out: string[], tok: HideRestToken, tupletScale: number, pendin
   out.push('        <rest/>');
   out.push(`        <duration>${emittedDur}</duration>`);
   out.push('        <voice>1</voice>');
-  out.push(`        <type>${unitsToNoteType(Math.round(baseUnits))}</type>`);
+  out.push(`        <type>${unitsToNoteType(Math.round(baseUnits), div)}</type>`);
   for (let d = 0; d < tok.dots; d++) out.push('        <dot/>');
   // 休符の連符 time-modification (連符内に休符がある場合)
   const hasTupletNotations = tok.tupletMember && (tok.tupletMember.memberIndex === 0 || tok.tupletMember.memberIndex === tok.tupletMember.totalMembers - 1);
@@ -1153,21 +1154,22 @@ function emitRest(out: string[], tok: HideRestToken, tupletScale: number, pendin
   out.push('      </note>');
 }
 
-/** 端数を埋める単純休符。emittedUnits はスケール後単位。<type> は raw unit (scale で割る) で計算 */
-function emitFillRest(out: string[], emittedUnits: number, tupletScale: number): void {
-  // <type> 計算は raw 単位 (scale で割る) で行う
+/** 端数を埋める単純休符。emittedUnits はスケール後単位。<type> は div=64 正規化で計算 */
+function emitFillRest(out: string[], emittedUnits: number, tupletScale: number, div: number): void {
   const rawUnits = emittedUnits / tupletScale;
-  // 標準値 (2冪 or 付点2冪) にマッチするか試す
-  const match = matchStandardDuration(rawUnits);
+  // div=64 に正規化して標準音価を判定する
+  const normalized = Math.round(rawUnits * 64 / div);
+  const match = matchStandardDuration(normalized);
   if (match) {
     emitSingleFillRest(out, emittedUnits, match.baseUnit, match.dots);
   } else {
-    // 非標準値: 2冪の合計に分割して複数休符で出力 (大きい方から貪欲)
-    let remaining = rawUnits;
+    // 非標準値: div=64 空間で2冪の合計に分割して複数休符で出力 (大きい方から貪欲)
+    let remaining = normalized;
     const powerOf2Desc = [128, 64, 32, 16, 8, 4, 2, 1];
     for (const pw of powerOf2Desc) {
       while (remaining >= pw) {
-        emitSingleFillRest(out, pw * tupletScale, pw, 0);
+        // <duration> は実スケールに戻す
+        emitSingleFillRest(out, Math.round(pw * div / 64 * tupletScale), pw, 0);
         remaining -= pw;
       }
     }
@@ -1214,9 +1216,11 @@ function emitWholeRest(
 // ============================================================
 
 /** units → MusicXML の <type> 文字列。v2.0: DIV=64 ベース */
-function unitsToNoteType(units: number): string {
+function unitsToNoteType(units: number, div: number = 64): string {
+  // durationUnits は実際の div スケールなので、div=64 基準に正規化してから判定する
+  const n = Math.round(units * 64 / div);
   // g=1u=64th, h=2u=32nd, i=4u=16th, j=8u=8th, k=16u=quarter, l=32u=half, m=64u=whole, n=128u=breve
-  switch (units) {
+  switch (n) {
     case 1: return '64th';
     case 2: return '32nd';
     case 4: return '16th';
@@ -1227,14 +1231,14 @@ function unitsToNoteType(units: number): string {
     case 128: return 'breve';
   }
   // フォールバック: 一番近い基本値
-  if (units < 1) return '64th';
-  if (units < 2) return '64th';
-  if (units < 4) return '32nd';
-  if (units < 8) return '16th';
-  if (units < 16) return 'eighth';
-  if (units < 32) return 'quarter';
-  if (units < 64) return 'half';
-  if (units < 128) return 'whole';
+  if (n < 1) return '64th';
+  if (n < 2) return '64th';
+  if (n < 4) return '32nd';
+  if (n < 8) return '16th';
+  if (n < 16) return 'eighth';
+  if (n < 32) return 'quarter';
+  if (n < 64) return 'half';
+  if (n < 128) return 'whole';
   return 'breve';
 }
 

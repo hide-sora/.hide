@@ -1,5 +1,5 @@
-[KEY:-1 DIV:4]
-[1]| F4j , | A4j G4j A4j Bb4j , | C5l A4j~ D5j , | C5j Bb4j A4j G4j , | A4l~ Rj C5j , | D5j E5j F5j E5j , | D5l C5j~ A4j , | Bb4j A4j G4j G4j , | F4l.~ ,,, |
-[2]| C4m , | F4m G4m F4m F4m , | E4l F4l G4l E4l F4m F4m , | F4m. E4l F4m. E4l , | F4n Rm A4m+ , | A4l G4l+ G4l C5j Bb4j A4m A4m , | A4m G4m G4m F4m+ , | F4l E4l F4m F4m E4m , | C4n. ,,, |
-[3]| A3m , | C4m C4m C4m D4m , | G3m C4m C4m Bb3m , | C4m D4l Bb3l C4m C4m , | C4n Rm F4m , | F4m E4m+ E4l D4l C4m+ , | C4m Bb3m E4m C4m , | Bb3m C4m D4m C4l. Bb3j , | A3n. ,,, |
-[4]| F2l , | F3l E3l Eb3l D3l , | C3j D3j E3j C3j F3l Bb2l , | A2l G2l F2j A2j C3l , | F2m Rl A3l , | Bb2l C3l D3j F3j A3j G3j , | F3j D3j G3l C3l F2l , | G2l A2l Bb2l C3l , | F2m. ,,, |
+[KEY:F DIV:4]
+[1:Soprano]| F4j , | A4j G4j A4j Bb4j , | C5l A4j~ D5j , | C5j Bb4j A4j G4j , | A4l~ Rj C5j , | D5j E5j F5j E5j , | D5l C5j~ A4j , | Bb4j A4j G4j G4j , | F4l.~ ,,, |
+[2:Alto]| C4k , | F4k G4k F4k F4k , | E4j F4j G4j E4j F4k F4k , | F4k. E4j F4k. E4j , | F4l Rk A4k+ , | A4j G4j+ G4j C5h Bb4h A4k A4k , | A4k G4k G4k F4k+ , | F4j E4j F4k F4k E4k , | C4l. ,,, |
+[3B:Tenor]| A3k , | C4k C4k C4k D4k , | G3k C4k C4k Bb3k , | C4k D4j Bb3j C4k C4k , | C4l Rk F4k , | F4k E4k+ E4j D4j C4k+ , | C4k Bb3k E4k C4k , | Bb3k C4k D4k C4j. Bb3h , | A3l. ,,, |
+[4B:Bass]| F2k , | F3k E3k Eb3k D3k , | C3i D3i E3i C3i F3k Bb2k , | A2k G2k F2i A2i C3k , | F2l Rk A3k , | Bb2k C3k D3i F3i A3i G3i , | F3i D3i G3k C3k F2k , | G2k A2k Bb2k C3k , | F2l. ,,, |

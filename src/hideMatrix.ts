@@ -561,6 +561,11 @@ function splitCellByMeasure(
   let currentUnits = 0;
   for (const tok of cell.body) {
     let dur = 0;
+    // 装飾音 (grace note) は演奏長 0
+    if (tok.kind === 'note' && tok.graceType) {
+      current.push(tok);
+      continue;
+    }
     if (tok.kind === 'note' || tok.kind === 'rest') {
       dur = tok.durationUnits;
     } else if (tok.kind === 'tuplet') {
@@ -607,6 +612,8 @@ function splitCellByMeasure(
 function computeBodyDuration(body: HideToken[]): number {
   let sum = 0;
   for (const tok of body) {
+    // 装飾音 (grace note) は演奏長 0 なので合計に含めない
+    if (tok.kind === 'note' && tok.graceType) continue;
     if (tok.kind === 'note' || tok.kind === 'rest') {
       sum += tok.durationUnits;
     } else if (tok.kind === 'tuplet') {
