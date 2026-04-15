@@ -1,0 +1,659 @@
+/**
+ * hideOmr.test.ts — PDF/画像 → .hide OMR pipeline の prompt builder 単体テスト
+ *
+ * テスト戦略:
+ *   - prompt builder は LLM 呼び出しを行わない pure function なので、
+ *     入力 → 出力の構造的な性質をひたすら確認する
+ *   - 「画像 source-of-truth」「silent fill 禁止」「few-shot 学習が前にくる」
+ *     などの設計思想が system prompt / user content に反映されているか確認
+ *   - hideLlmReview.test.ts のテストヘルパー規約 (`makeImage`, `TINY_PNG_BASE64`)
+ *     を踏襲
+ */
+
+import { describe, it, expect } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { buildHideOmrPrompt } from './hideOmr';
+import type {
+  HideOmrImage,
+  HideOmrExample,
+  HideOmrInput,
+} from './hideOmr';
+
+// ============================================================
+// テストヘルパー
+// ============================================================
+
+const TINY_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgAAIAAAUAAen63NgAAAAASUVORK5CYII=';
+
+function makeImage(overrides: Partial<HideOmrImage> = {}): HideOmrImage {
+  return {
+    base64: TINY_PNG_BASE64,
+    mediaType: 'image/png',
+    ...overrides,
+  };
+}
+
+const SAMPLE_HIDE = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5m | D5m |
+[2]| G4m | A4m |`;
+
+function makeExample(overrides: Partial<HideOmrExample> = {}): HideOmrExample {
+  return {
+    label: 'Sample',
+    description: 'Two measures, two parts',
+    hideSource: SAMPLE_HIDE,
+    ...overrides,
+  };
+}
+
+function input(overrides: Partial<HideOmrInput> = {}): HideOmrInput {
+  return {
+    pageImages: [makeImage({ pageNumber: 1 })],
+    ...overrides,
+  };
+}
+
+// ============================================================
+// 基本構造
+// ============================================================
+
+describe('buildHideOmrPrompt — basic shape', () => {
+  it('returns systemPrompt / userContent / textOnlyPrompt / summary', () => {
+    const prompt = buildHideOmrPrompt(input());
+    expect(typeof prompt.systemPrompt).toBe('string');
+    expect(Array.isArray(prompt.userContent)).toBe(true);
+    expect(typeof prompt.textOnlyPrompt).toBe('string');
+    expect(prompt.summary).toBeDefined();
+  });
+
+  it('summary fields reflect input counts', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [makeImage(), makeImage(), makeImage()],
+      fewShotExamples: [makeExample(), makeExample()],
+      pieceContext: { title: 'Test' },
+      additionalInstructions: 'Skip lyrics',
+    });
+    expect(prompt.summary.imageCount).toBe(3);
+    expect(prompt.summary.fewShotExampleCount).toBe(2);
+    expect(prompt.summary.hasPieceContext).toBe(true);
+    expect(prompt.summary.hasAdditionalInstructions).toBe(true);
+  });
+
+  it('summary defaults to false flags when nothing optional supplied', () => {
+    const prompt = buildHideOmrPrompt(input());
+    expect(prompt.summary.imageCount).toBe(1);
+    expect(prompt.summary.fewShotExampleCount).toBe(0);
+    expect(prompt.summary.hasPieceContext).toBe(false);
+    expect(prompt.summary.hasAdditionalInstructions).toBe(false);
+  });
+
+  it('systemPrompt is non-empty regardless of input', () => {
+    const empty = buildHideOmrPrompt({ pageImages: [] });
+    expect(empty.systemPrompt.length).toBeGreaterThan(100);
+  });
+});
+
+// ============================================================
+// system prompt の必須内容
+// ============================================================
+
+describe('buildHideOmrPrompt — system prompt content', () => {
+  it('declares image as source-of-truth', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/source-of-truth/);
+    expect(systemPrompt).toMatch(/画像/);
+  });
+
+  it('mentions silent-fill prohibition (核となる設計思想)', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/silent fill/);
+    expect(systemPrompt).toMatch(/推測で埋め/);
+  });
+
+  it('contains a minimal .hide cheatsheet (header / pitch / length / chord / parts)', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/CLEF:TREBLE TIME/);
+    expect(systemPrompt).toMatch(/h=32分/);
+    expect(systemPrompt).toMatch(/和音/);
+    expect(systemPrompt).toMatch(/\[P\]/);
+    expect(systemPrompt).toMatch(/8\(C4iD4iE4i\)/);
+  });
+
+  it('explains KEY/TIME/CLEF/DIV header field semantics', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/KEY/);
+    expect(systemPrompt).toMatch(/フラット|♭/);
+    expect(systemPrompt).toMatch(/DIV:32/);
+  });
+
+  it('mentions multi-voice labeling (S/A/T/B → [1]/[2]/[3]/[4])', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/上声/);
+    expect(systemPrompt).toMatch(/\[1\]/);
+    expect(systemPrompt).toMatch(/\[N\]/);
+  });
+
+  it('specifies output format (summary → ```hide``` block → UNRESOLVED)', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/認識サマリ/);
+    expect(systemPrompt).toMatch(/```hide/);
+    expect(systemPrompt).toMatch(/UNRESOLVED/);
+  });
+
+  it('frames task as "OMR engineer" rather than "review"', () => {
+    const { systemPrompt } = buildHideOmrPrompt(input());
+    expect(systemPrompt).toMatch(/OMR/);
+    expect(systemPrompt).toMatch(/書き起こ/);
+    // hideLlmReview と区別: 「校閲」より「書き起こし」が前面
+    expect(systemPrompt).not.toMatch(/校閲者/);
+  });
+});
+
+// ============================================================
+// piece context section
+// ============================================================
+
+describe('buildHideOmrPrompt — piece context', () => {
+  it('omits the section when no pieceContext is given', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input());
+    expect(textOnlyPrompt).not.toMatch(/楽曲情報/);
+  });
+
+  it('omits the section when pieceContext is given but all fields are empty', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input({ pieceContext: {} }));
+    expect(textOnlyPrompt).not.toMatch(/楽曲情報/);
+  });
+
+  it('includes title / composer / notes when supplied', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({
+        pieceContext: {
+          title: 'BWV 269',
+          composer: 'J.S. Bach',
+          notes: '4 声合唱',
+        },
+      }),
+    );
+    expect(textOnlyPrompt).toMatch(/楽曲情報/);
+    expect(textOnlyPrompt).toMatch(/BWV 269/);
+    expect(textOnlyPrompt).toMatch(/J\.S\. Bach/);
+    expect(textOnlyPrompt).toMatch(/4 声合唱/);
+  });
+});
+
+// ============================================================
+// few-shot examples
+// ============================================================
+
+describe('buildHideOmrPrompt — few-shot examples', () => {
+  it('omits the section when no examples are given', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input());
+    expect(textOnlyPrompt).not.toMatch(/参考例/);
+    expect(textOnlyPrompt).not.toMatch(/構文サンプル/);
+  });
+
+  it('emits a header section when one example is given', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({ fewShotExamples: [makeExample()] }),
+    );
+    expect(textOnlyPrompt).toMatch(/参考例/);
+    expect(textOnlyPrompt).toMatch(/構文サンプル/);
+  });
+
+  it('numbers examples 1, 2, 3 with their labels', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({
+        fewShotExamples: [
+          makeExample({ label: 'Alpha' }),
+          makeExample({ label: 'Beta' }),
+          makeExample({ label: 'Gamma' }),
+        ],
+      }),
+    );
+    expect(textOnlyPrompt).toMatch(/参考例 1: Alpha/);
+    expect(textOnlyPrompt).toMatch(/参考例 2: Beta/);
+    expect(textOnlyPrompt).toMatch(/参考例 3: Gamma/);
+  });
+
+  it('omits label suffix when example has no label', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({
+        fewShotExamples: [
+          { hideSource: SAMPLE_HIDE, description: 'unnamed' },
+        ],
+      }),
+    );
+    expect(textOnlyPrompt).toMatch(/参考例 1\n/);
+    expect(textOnlyPrompt).not.toMatch(/参考例 1:/);
+  });
+
+  it('embeds each example inside a ```hide``` fenced block', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({ fewShotExamples: [makeExample()] }),
+    );
+    // SAMPLE_HIDE が ```hide ... ``` で囲まれている
+    expect(textOnlyPrompt).toMatch(/```hide\n\[CLEF:TREBLE/);
+    expect(textOnlyPrompt).toMatch(/D5m \|\n\[2\]/);
+  });
+
+  it('omits description line when example has no description', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({
+        fewShotExamples: [{ label: 'Bare', hideSource: SAMPLE_HIDE }],
+      }),
+    );
+    expect(textOnlyPrompt).toMatch(/参考例 1: Bare/);
+    // 「OMR 対象ではありません」の固定 caption は出るが、example 個別の説明はない
+    const sectionMatch = textOnlyPrompt.match(
+      /### 参考例 1: Bare[\s\S]*?```hide/,
+    );
+    expect(sectionMatch).not.toBeNull();
+    if (sectionMatch) {
+      // 見出しと ```hide の間に description はない (空行のみ)
+      expect(sectionMatch[0]).not.toMatch(/Two measures/);
+    }
+  });
+
+  it('explicitly tells LLM that examples are syntax-only, NOT OMR targets', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({ fewShotExamples: [makeExample()] }),
+    );
+    expect(textOnlyPrompt).toMatch(/OMR 対象ではありません/);
+    expect(textOnlyPrompt).toMatch(/構文を学習/);
+  });
+});
+
+// ============================================================
+// additional instructions
+// ============================================================
+
+describe('buildHideOmrPrompt — additional instructions', () => {
+  it('omits the section when no additionalInstructions is given', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input());
+    expect(textOnlyPrompt).not.toMatch(/追加指示/);
+  });
+
+  it('omits the section when additionalInstructions is empty/whitespace', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({ additionalInstructions: '   \n  ' }),
+    );
+    expect(textOnlyPrompt).not.toMatch(/追加指示/);
+  });
+
+  it('includes the trimmed instructions when supplied', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(
+      input({ additionalInstructions: '\n  voice 1-2 だけを書き起こす  \n' }),
+    );
+    expect(textOnlyPrompt).toMatch(/追加指示/);
+    expect(textOnlyPrompt).toMatch(/voice 1-2 だけを書き起こす/);
+    // trim されている (前後の whitespace なし)
+    expect(textOnlyPrompt).not.toMatch(/  voice/);
+  });
+});
+
+// ============================================================
+// images intro section
+// ============================================================
+
+describe('buildHideOmrPrompt — images intro section', () => {
+  it('says "(画像が添付されていません)" when imageCount === 0', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt({ pageImages: [] });
+    expect(textOnlyPrompt).toMatch(/OMR 対象画像/);
+    expect(textOnlyPrompt).toMatch(/画像が添付されていません/);
+  });
+
+  it('uses singular wording for 1 image', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input());
+    expect(textOnlyPrompt).toMatch(/OMR 対象画像/);
+    expect(textOnlyPrompt).toMatch(/楽譜画像を 1 枚/);
+  });
+
+  it('uses plural wording for multiple images', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt({
+      pageImages: [makeImage(), makeImage(), makeImage()],
+    });
+    expect(textOnlyPrompt).toMatch(/楽譜画像を 3 枚/);
+    expect(textOnlyPrompt).toMatch(/複数ページにまたがる/);
+  });
+});
+
+// ============================================================
+// 画像 (multimodal content blocks)
+// ============================================================
+
+describe('buildHideOmrPrompt — image content blocks', () => {
+  it('omits image blocks when no images are supplied', () => {
+    const { userContent, summary } = buildHideOmrPrompt({ pageImages: [] });
+    expect(summary.imageCount).toBe(0);
+    expect(userContent.every(b => b.type === 'text')).toBe(true);
+  });
+
+  it('emits image blocks in Anthropic wire format (source.media_type / base64)', () => {
+    const { userContent } = buildHideOmrPrompt({
+      pageImages: [makeImage({ mediaType: 'image/jpeg', base64: 'AAAA' })],
+    });
+    const imgBlock = userContent.find(b => b.type === 'image');
+    expect(imgBlock).toBeDefined();
+    if (imgBlock && imgBlock.type === 'image') {
+      expect(imgBlock.source.type).toBe('base64');
+      expect(imgBlock.source.media_type).toBe('image/jpeg');
+      expect(imgBlock.source.data).toBe('AAAA');
+    }
+  });
+
+  it('emits a caption text block before each image when pageNumber/label is set', () => {
+    const { userContent } = buildHideOmrPrompt({
+      pageImages: [
+        makeImage({ pageNumber: 1, label: 'system 1' }),
+        makeImage({ pageNumber: 2 }),
+      ],
+    });
+    const captionTexts = userContent
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text);
+    expect(captionTexts.some(t => t.includes('page 1') && t.includes('system 1'))).toBe(true);
+    expect(captionTexts.some(t => t === '(page 2)')).toBe(true);
+  });
+
+  it('emits no caption when image has no pageNumber/label', () => {
+    const { userContent } = buildHideOmrPrompt({
+      pageImages: [makeImage()],
+    });
+    // caption text block の直前に image block が出るとは限らない
+    // (前に imagesIntro 等があるため) — caption 自体を出していないことを確認
+    const captionTexts = userContent
+      .filter(b => b.type === 'text')
+      .map(b => (b as { type: 'text'; text: string }).text);
+    expect(captionTexts.some(t => /^\(.*\)$/.test(t))).toBe(false);
+  });
+
+  it('preserves multi-page ordering', () => {
+    const images: HideOmrImage[] = [
+      makeImage({ pageNumber: 1, base64: 'AAA' }),
+      makeImage({ pageNumber: 2, base64: 'BBB' }),
+      makeImage({ pageNumber: 3, base64: 'CCC' }),
+    ];
+    const { userContent } = buildHideOmrPrompt({ pageImages: images });
+    const imageBlocks = userContent.filter(b => b.type === 'image');
+    expect(imageBlocks).toHaveLength(3);
+    if (
+      imageBlocks[0].type === 'image' &&
+      imageBlocks[1].type === 'image' &&
+      imageBlocks[2].type === 'image'
+    ) {
+      expect(imageBlocks[0].source.data).toBe('AAA');
+      expect(imageBlocks[1].source.data).toBe('BBB');
+      expect(imageBlocks[2].source.data).toBe('CCC');
+    }
+  });
+
+  it('emits all 4 supported media types (png/jpeg/webp/gif)', () => {
+    const { userContent } = buildHideOmrPrompt({
+      pageImages: [
+        makeImage({ mediaType: 'image/png', base64: 'P' }),
+        makeImage({ mediaType: 'image/jpeg', base64: 'J' }),
+        makeImage({ mediaType: 'image/webp', base64: 'W' }),
+        makeImage({ mediaType: 'image/gif', base64: 'G' }),
+      ],
+    });
+    const mediaTypes = userContent
+      .filter(b => b.type === 'image')
+      .map(b => (b as { type: 'image'; source: { media_type: string } }).source.media_type);
+    expect(mediaTypes).toEqual(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+  });
+});
+
+// ============================================================
+// セクション順序 (text + image の interleave)
+// ============================================================
+
+describe('buildHideOmrPrompt — section ordering', () => {
+  it('places fewShotExamples BEFORE images (so LLM learns syntax first)', () => {
+    const { userContent } = buildHideOmrPrompt(
+      input({ fewShotExamples: [makeExample()] }),
+    );
+    const fewShotIdx = userContent.findIndex(
+      b => b.type === 'text' && /参考例/.test((b as { type: 'text'; text: string }).text),
+    );
+    const firstImageIdx = userContent.findIndex(b => b.type === 'image');
+    expect(fewShotIdx).toBeGreaterThanOrEqual(0);
+    expect(firstImageIdx).toBeGreaterThanOrEqual(0);
+    expect(fewShotIdx).toBeLessThan(firstImageIdx);
+  });
+
+  it('places imagesIntro section BEFORE the actual image blocks', () => {
+    const { userContent } = buildHideOmrPrompt(input());
+    const introIdx = userContent.findIndex(
+      b => b.type === 'text' && /OMR 対象画像/.test((b as { type: 'text'; text: string }).text),
+    );
+    const firstImageIdx = userContent.findIndex(b => b.type === 'image');
+    expect(introIdx).toBeGreaterThanOrEqual(0);
+    expect(firstImageIdx).toBeGreaterThanOrEqual(0);
+    expect(introIdx).toBeLessThan(firstImageIdx);
+  });
+
+  it('places additionalInstructions and instruction footer AFTER images', () => {
+    const { userContent } = buildHideOmrPrompt(
+      input({ additionalInstructions: 'Skip page numbers' }),
+    );
+    const lastImageIdx = (() => {
+      let idx = -1;
+      for (let i = 0; i < userContent.length; i++) {
+        if (userContent[i].type === 'image') idx = i;
+      }
+      return idx;
+    })();
+    const additionalIdx = userContent.findIndex(
+      b => b.type === 'text' && /追加指示/.test((b as { type: 'text'; text: string }).text),
+    );
+    const footerIdx = userContent.findIndex(
+      b => b.type === 'text' && /^## 指示\n/.test((b as { type: 'text'; text: string }).text),
+    );
+    expect(lastImageIdx).toBeGreaterThanOrEqual(0);
+    expect(additionalIdx).toBeGreaterThan(lastImageIdx);
+    expect(footerIdx).toBeGreaterThan(additionalIdx);
+  });
+
+  it('full ordering: pieceContext → fewShot → imagesIntro → images → instruction', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [makeImage({ pageNumber: 1 })],
+      pieceContext: { title: 'Test' },
+      fewShotExamples: [makeExample()],
+    });
+    const text = prompt.textOnlyPrompt;
+    const idxPiece = text.indexOf('## 楽曲情報');
+    const idxFewShot = text.indexOf('## 参考例');
+    const idxIntro = text.indexOf('## OMR 対象画像');
+    const idxFooter = text.indexOf('## 指示\n');
+    expect(idxPiece).toBeGreaterThanOrEqual(0);
+    expect(idxFewShot).toBeGreaterThan(idxPiece);
+    expect(idxIntro).toBeGreaterThan(idxFewShot);
+    expect(idxFooter).toBeGreaterThan(idxIntro);
+  });
+});
+
+// ============================================================
+// instruction footer
+// ============================================================
+
+describe('buildHideOmrPrompt — instruction footer', () => {
+  it('mentions image count when images are attached', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt({
+      pageImages: [makeImage(), makeImage()],
+    });
+    expect(textOnlyPrompt).toMatch(/2 枚の楽譜画像/);
+  });
+
+  it('says "no images attached" when no images', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt({ pageImages: [] });
+    expect(textOnlyPrompt).toMatch(/楽譜画像が添付されていません/);
+  });
+
+  it('always reminds about silent-fill prohibition', () => {
+    const { textOnlyPrompt } = buildHideOmrPrompt(input());
+    expect(textOnlyPrompt).toMatch(/推測で埋め/);
+    expect(textOnlyPrompt).toMatch(/UNRESOLVED/);
+  });
+});
+
+// ============================================================
+// textOnlyPrompt vs userContent consistency
+// ============================================================
+
+describe('buildHideOmrPrompt — textOnlyPrompt mirrors userContent text', () => {
+  it('textOnlyPrompt contains every section text', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [makeImage({ pageNumber: 1 })],
+      pieceContext: { title: 'X' },
+      fewShotExamples: [makeExample()],
+      additionalInstructions: 'foo',
+    });
+    expect(prompt.textOnlyPrompt).toMatch(/楽曲情報/);
+    expect(prompt.textOnlyPrompt).toMatch(/参考例/);
+    expect(prompt.textOnlyPrompt).toMatch(/OMR 対象画像/);
+    expect(prompt.textOnlyPrompt).toMatch(/追加指示/);
+    expect(prompt.textOnlyPrompt).toMatch(/^## 指示\n/m);
+  });
+
+  it('textOnlyPrompt replaces images with [image: ...] placeholders', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [
+        makeImage({ pageNumber: 1, label: 'system 1' }),
+        makeImage({ pageNumber: 2 }),
+      ],
+    });
+    expect(prompt.textOnlyPrompt).toMatch(/\[image: page 1 — system 1\]/);
+    expect(prompt.textOnlyPrompt).toMatch(/\[image: page 2\]/);
+    // Base64 そのものは入らない
+    expect(prompt.textOnlyPrompt).not.toMatch(/iVBORw0KGgo/);
+  });
+
+  it('textOnlyPrompt placeholders for unlabeled images use index fallback', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [makeImage(), makeImage()],
+    });
+    expect(prompt.textOnlyPrompt).toMatch(/\[image: image 1\]/);
+    expect(prompt.textOnlyPrompt).toMatch(/\[image: image 2\]/);
+  });
+});
+
+// ============================================================
+// 契約不変量 / edge cases
+// ============================================================
+
+describe('buildHideOmrPrompt — contractual invariants', () => {
+  it('does not throw on empty pageImages array', () => {
+    expect(() => buildHideOmrPrompt({ pageImages: [] })).not.toThrow();
+  });
+
+  it('userContent is non-empty even without images (sections still render)', () => {
+    const prompt = buildHideOmrPrompt({ pageImages: [] });
+    expect(prompt.userContent.length).toBeGreaterThan(0);
+    expect(prompt.userContent.some(b => b.type === 'text')).toBe(true);
+  });
+
+  it('userContent text blocks total ≥ 2 (imagesIntro + footer minimum)', () => {
+    const prompt = buildHideOmrPrompt(input());
+    const textCount = prompt.userContent.filter(b => b.type === 'text').length;
+    // imagesIntro + caption (page 1) + footer = 3
+    expect(textCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('idempotent: calling with the same input twice returns equivalent result', () => {
+    const inp = input({
+      pieceContext: { title: 'X' },
+      fewShotExamples: [makeExample()],
+    });
+    const a = buildHideOmrPrompt(inp);
+    const b = buildHideOmrPrompt(inp);
+    expect(a.systemPrompt).toBe(b.systemPrompt);
+    expect(a.textOnlyPrompt).toBe(b.textOnlyPrompt);
+    expect(a.summary).toEqual(b.summary);
+  });
+
+  it('does not mutate input', () => {
+    const examples = [makeExample()];
+    const images = [makeImage({ pageNumber: 1 })];
+    const inp: HideOmrInput = {
+      pageImages: images,
+      fewShotExamples: examples,
+    };
+    buildHideOmrPrompt(inp);
+    expect(inp.pageImages).toBe(images);
+    expect(inp.fewShotExamples).toBe(examples);
+    expect(inp.pageImages).toHaveLength(1);
+    expect(inp.fewShotExamples).toHaveLength(1);
+  });
+});
+
+// ============================================================
+// 現実的な Bach corpus 統合
+// ============================================================
+
+describe('buildHideOmrPrompt — realistic Bach corpus integration', () => {
+  it('embeds a real Bach chorale as a few-shot example without throwing', () => {
+    const bachPath = join(
+      __dirname,
+      '..',
+      'corpus',
+      'bach',
+      'hide',
+      'bwv1.6.hide',
+    );
+    const bachSource = readFileSync(bachPath, 'utf8');
+    const prompt = buildHideOmrPrompt({
+      pageImages: [makeImage({ pageNumber: 1, label: 'OMR target' })],
+      pieceContext: {
+        title: 'My Arrangement',
+        composer: 'arr. me',
+        notes: '4 声合唱',
+      },
+      fewShotExamples: [
+        {
+          label: 'BWV 1.6',
+          description: '4 声体 Bach chorale (F メジャー)',
+          hideSource: bachSource,
+        },
+      ],
+    });
+    // 構造的に成立 + Bach のソースが embed されている
+    expect(prompt.summary.imageCount).toBe(1);
+    expect(prompt.summary.fewShotExampleCount).toBe(1);
+    expect(prompt.textOnlyPrompt).toMatch(/BWV 1\.6/);
+    expect(prompt.textOnlyPrompt).toMatch(/CLEF:TREBLE TIME:4\/4 KEY:-1/);
+  });
+
+  it('handles 3 examples + 2 page images + full pieceContext + additional instructions', () => {
+    const prompt = buildHideOmrPrompt({
+      pageImages: [
+        makeImage({ pageNumber: 1, label: 'page 1' }),
+        makeImage({ pageNumber: 2, label: 'page 2' }),
+      ],
+      pieceContext: {
+        title: 'Concerto',
+        composer: 'Anon',
+        notes: '2 ページ、ピックアップ小節あり',
+      },
+      fewShotExamples: [
+        makeExample({ label: 'A' }),
+        makeExample({ label: 'B' }),
+        makeExample({ label: 'C' }),
+      ],
+      additionalInstructions: 'voice パーカッションは無視',
+    });
+    expect(prompt.summary.imageCount).toBe(2);
+    expect(prompt.summary.fewShotExampleCount).toBe(3);
+    expect(prompt.summary.hasPieceContext).toBe(true);
+    expect(prompt.summary.hasAdditionalInstructions).toBe(true);
+
+    const text = prompt.textOnlyPrompt;
+    expect(text).toMatch(/参考例 1: A/);
+    expect(text).toMatch(/参考例 2: B/);
+    expect(text).toMatch(/参考例 3: C/);
+    expect(text).toMatch(/page 1/);
+    expect(text).toMatch(/page 2/);
+    expect(text).toMatch(/voice パーカッションは無視/);
+  });
+});

@@ -1,0 +1,593 @@
+/**
+ * hideOmrApply.test.ts — PDF/画像 → .hide OMR pipeline の apply layer 単体テスト
+ *
+ * テスト戦略:
+ *   - apply layer は LLM 呼び出しを行わない pure parser なので、
+ *     入力 (raw text) → 出力 (構造化結果) の契約をひたすら確認する
+ *   - フェンス抽出 / summary 抽出 / UNRESOLVED 抽出 / validation /
+ *     chord+VL recompute をそれぞれ独立にカバーする
+ *   - silent fill 禁止という設計を反映: 「LLM 応答を再検証して残存 issue を
+ *     surface する」「UNRESOLVED が parser で拾える」を確認
+ *   - hideLlmReviewApply.test.ts のテストヘルパー規約 (`fenceHide`) を踏襲、
+ *     ただし `originalHideSource` 入力はないので削除
+ */
+
+import { describe, it, expect } from 'vitest';
+import { applyHideOmrResponse } from './hideOmrApply';
+import {
+  applyHideOmrResponse as applyHideOmrResponseFromBarrel,
+  buildHideOmrPrompt as buildHideOmrPromptFromBarrel,
+} from './index';
+
+// ============================================================
+// テストヘルパー
+// ============================================================
+
+/** v1.9 grid form の最小 .hide ソース (2 パート × 2 小節、TIME=4/4 DIV=32) */
+const CLEAN_TWO_PART = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5m | D5m |
+[2]| G4m | A4m |`;
+
+/** 小節数不一致 (issue 検出用) */
+const COUNT_MISMATCH_TWO_PART = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5m | D5m | E5m |
+[2]| G4m | A4m |`;
+
+/** 平行 5 度 (voice leading observation 検出用) */
+const PARALLEL_FIFTHS_TWO_PART = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5m | D5m |
+[2]| F4m | G4m |`;
+
+/** Markdown コードフェンスで包む */
+function fenceHide(content: string): string {
+  return '```hide\n' + content + '\n```';
+}
+
+// ============================================================
+// 基本構造
+// ============================================================
+
+describe('applyHideOmrResponse — basic shape', () => {
+  it('returns all expected fields', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: '認識サマリ\n\n' + fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply).toHaveProperty('hideBlockFound');
+    expect(apply).toHaveProperty('hideBlockCount');
+    expect(apply).toHaveProperty('hideSource');
+    expect(apply).toHaveProperty('summaryText');
+    expect(apply).toHaveProperty('unresolved');
+    expect(apply).toHaveProperty('validation');
+    expect(apply).toHaveProperty('warnings');
+  });
+
+  it('extracts a single ```hide``` block exactly', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.hideBlockFound).toBe(true);
+    expect(apply.hideBlockCount).toBe(1);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+    expect(apply.warnings).toHaveLength(0);
+  });
+
+  it('does NOT include any delta-related field (OMR は生成タスク)', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply).not.toHaveProperty('delta');
+    expect(apply).not.toHaveProperty('originalHideSource');
+  });
+});
+
+// ============================================================
+// fenced block 抽出
+// ============================================================
+
+describe('applyHideOmrResponse — fenced block extraction', () => {
+  it('returns hideBlockFound=false and warns when no block is present', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: 'OMR 完全失敗、何も認識できませんでした',
+    });
+    expect(apply.hideBlockFound).toBe(false);
+    expect(apply.hideBlockCount).toBe(0);
+    expect(apply.hideSource).toBeUndefined();
+    expect(apply.warnings.some(w => /見つかりませんでした/.test(w))).toBe(true);
+  });
+
+  it('takes the first block and warns when multiple ```hide``` blocks are present', () => {
+    const llmResponse =
+      '## Attempt A\n' +
+      fenceHide('[1]| C5m |') +
+      '\n\n## Attempt B\n' +
+      fenceHide('[1]| D5m |');
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.hideBlockCount).toBe(2);
+    expect(apply.hideSource).toBe('[1]| C5m |');
+    expect(apply.warnings.some(w => /2 個/.test(w))).toBe(true);
+  });
+
+  it('ignores fenced blocks with non-`hide` language tags', () => {
+    const llmResponse =
+      '```python\nprint("not hide")\n```\n\n' + fenceHide(CLEAN_TWO_PART);
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.hideBlockCount).toBe(1);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+  });
+
+  it('ignores plain ``` blocks with no language tag', () => {
+    const llmResponse = '```\nplain code\n```\n\n' + fenceHide(CLEAN_TWO_PART);
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.hideBlockCount).toBe(1);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+  });
+
+  it('tolerates whitespace around the language tag', () => {
+    const llmResponse = '```  hide  \n' + CLEAN_TWO_PART + '\n```';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.hideBlockCount).toBe(1);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+  });
+
+  it('tolerates CRLF line endings', () => {
+    const crlfBody = CLEAN_TWO_PART.replace(/\n/g, '\r\n');
+    const llmResponse = '```hide\r\n' + crlfBody + '\r\n```';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.hideBlockCount).toBe(1);
+    expect(apply.hideSource).toMatch(/\[1\]/);
+  });
+});
+
+// ============================================================
+// summary text 抽出
+// ============================================================
+
+describe('applyHideOmrResponse — summary extraction', () => {
+  it('captures text before the ```hide``` block as summaryText', () => {
+    const llmResponse =
+      '4 声体 Bach chorale、F メジャー、12 小節と認識しました。\n' +
+      'ピックアップ小節なし。\n\n' +
+      fenceHide(CLEAN_TWO_PART);
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.summaryText).toMatch(/Bach chorale/);
+    expect(apply.summaryText).toMatch(/12 小節/);
+    expect(apply.summaryText).not.toMatch(/```/);
+  });
+
+  it('returns trimmed summaryText (no leading/trailing whitespace)', () => {
+    const llmResponse = '\n\n  recognition summary  \n\n' + fenceHide(CLEAN_TWO_PART);
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.summaryText).toBe('recognition summary');
+  });
+
+  it('returns empty summaryText when block has no prelude', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.summaryText).toBe('');
+  });
+
+  it('falls back to entire response (minus UNRESOLVED) when no fenced block', () => {
+    const llmResponse =
+      'OMR が完全に失敗しました。\n\nUNRESOLVED:\n- ページ全体が不鮮明';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.summaryText).toBe('OMR が完全に失敗しました。');
+  });
+
+  it('returns the whole text as summary when no block and no UNRESOLVED', () => {
+    const llmResponse = 'just commentary, nothing structured';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.summaryText).toBe('just commentary, nothing structured');
+  });
+});
+
+// ============================================================
+// UNRESOLVED 抽出
+// ============================================================
+
+describe('applyHideOmrResponse — UNRESOLVED extraction', () => {
+  it('extracts bullet items after the ```hide``` block', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED:\n- 小節 5 の voice 3 の音価が不明\n- 最終小節の和音記号が読めない';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved).toHaveLength(2);
+    expect(apply.unresolved[0].text).toBe('小節 5 の voice 3 の音価が不明');
+    expect(apply.unresolved[0].index).toBe(1);
+    expect(apply.unresolved[1].text).toBe('最終小節の和音記号が読めない');
+    expect(apply.unresolved[1].index).toBe(2);
+  });
+
+  it('returns empty array when no UNRESOLVED section is present', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.unresolved).toEqual([]);
+  });
+
+  it('strips `* ` bullet prefix', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) + '\n\nUNRESOLVED:\n* item one\n* item two';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual(['item one', 'item two']);
+  });
+
+  it('strips `+ ` bullet prefix', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) + '\n\nUNRESOLVED:\n+ item one';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual(['item one']);
+  });
+
+  it('strips numbered prefixes (`1. ` and `1) `)', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED:\n1. item one\n2) item two';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual(['item one', 'item two']);
+  });
+
+  it('captures inline content on the UNRESOLVED header line', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) + '\n\nUNRESOLVED: 全体的に画像が不鮮明';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved).toHaveLength(1);
+    expect(apply.unresolved[0].text).toBe('全体的に画像が不鮮明');
+  });
+
+  it('captures inline content + subsequent bullets', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED: 全体的に画像が不鮮明\n- 小節 5\n- 小節 7';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual([
+      '全体的に画像が不鮮明',
+      '小節 5',
+      '小節 7',
+    ]);
+  });
+
+  it('matches case-insensitively (Unresolved / UNRESOLVED)', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) + '\n\nUnresolved:\n- one';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual(['one']);
+  });
+
+  it('does NOT extract UNRESOLVED text that appears INSIDE the ```hide``` block', () => {
+    const llmResponse =
+      '```hide\n' +
+      '[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32] ; UNRESOLVED: this is inside\n' +
+      '[1]| C5m |\n' +
+      '```';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved).toEqual([]);
+  });
+
+  it('still finds UNRESOLVED when no ```hide``` block was extracted', () => {
+    const llmResponse =
+      'OMR failed.\n\nUNRESOLVED:\n- nothing in image\n- everything is broken';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual([
+      'nothing in image',
+      'everything is broken',
+    ]);
+  });
+
+  it('stops extraction at the next markdown heading', () => {
+    const llmResponse =
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED:\n- one\n- two\n\n## next section\n- not an unresolved item';
+    const apply = applyHideOmrResponse({ llmResponse });
+    expect(apply.unresolved.map(u => u.text)).toEqual(['one', 'two']);
+  });
+});
+
+// ============================================================
+// validation (analyzeMatrix で再パース)
+// ============================================================
+
+describe('applyHideOmrResponse — validation', () => {
+  it('reports parsed=true and zero issues for a clean OMR result', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.issues).toEqual([]);
+    expect(apply.validation.issueKinds).toEqual([]);
+    expect(apply.validation.parseError).toBeUndefined();
+  });
+
+  it('surfaces matrix issues when result has measure count mismatch', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(COUNT_MISMATCH_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.issueKinds).toContain('measureCountMismatch');
+    expect(apply.validation.issues.length).toBeGreaterThan(0);
+  });
+
+  it('surfaces measureDurationMismatch when a cell has wrong duration', () => {
+    const wrongDur = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5l |
+[2]| G4m |`;
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(wrongDur),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.issueKinds).toContain('measureDurationMismatch');
+  });
+
+  it('reports parsed=false with parseError when result is malformed', () => {
+    const malformed = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[BADMETA]
+[1]| C5m |`;
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(malformed),
+    });
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.validation.parseError).toBeDefined();
+    expect(apply.validation.issues).toEqual([]);
+  });
+
+  it('reports parsed=false with explicit error when no block was found', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: 'no block here',
+    });
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.validation.parseError).toMatch(/no.*hide.*block/i);
+  });
+
+  it('issueKinds is sorted unique', () => {
+    const both = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5l |
+[2]| G4m | A4m |`;
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(both),
+    });
+    const sorted = [...apply.validation.issueKinds].sort();
+    expect(apply.validation.issueKinds).toEqual(sorted);
+    const set = new Set(apply.validation.issueKinds);
+    expect(set.size).toBe(apply.validation.issueKinds.length);
+  });
+});
+
+// ============================================================
+// chord 再計算 (parsed=true 時)
+// ============================================================
+
+describe('applyHideOmrResponse — chord recomputation', () => {
+  it('populates chordLabels when parsed=true', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.chordLabels).toBeDefined();
+    expect(Array.isArray(apply.validation.chordLabels)).toBe(true);
+    // 2 measures expected
+    expect(apply.validation.chordLabels).toHaveLength(2);
+  });
+
+  it('omits chordLabels when parsed=false', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: 'no block',
+    });
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.validation.chordLabels).toBeUndefined();
+  });
+
+  it('populates chordLabels even when issues are present', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(COUNT_MISMATCH_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.chordLabels).toBeDefined();
+    // measureCountMismatch があっても chord は計算される
+    expect(apply.validation.issues.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================================
+// voice leading 再計算 (parsed=true 時)
+// ============================================================
+
+describe('applyHideOmrResponse — voice leading recomputation', () => {
+  it('populates voiceLeadingObservations when parsed=true', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.voiceLeadingObservations).toBeDefined();
+    expect(Array.isArray(apply.validation.voiceLeadingObservations)).toBe(true);
+  });
+
+  it('omits voiceLeadingObservations when parsed=false', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: 'no block',
+    });
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.validation.voiceLeadingObservations).toBeUndefined();
+  });
+
+  it('detects parallelFifths in OMR result', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(PARALLEL_FIFTHS_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    const kinds = (apply.validation.voiceLeadingObservations ?? []).map(o => o.kind);
+    expect(kinds).toContain('parallelFifths');
+  });
+});
+
+// ============================================================
+// 現実的な LLM 応答
+// ============================================================
+
+describe('applyHideOmrResponse — realistic LLM responses', () => {
+  it('parses a full response (summary + ```hide``` + UNRESOLVED bullets)', () => {
+    const llmResponse =
+      '## 認識サマリ\n\n' +
+      '4 声体 Bach chorale、F メジャー、4/4 拍子、12 小節と認識しました。\n' +
+      'ただし最終小節の voice 3 の音価が一部不鮮明です。\n\n' +
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED:\n' +
+      '- 最終小節 voice 3 の音価 (4 分か付点 4 分か判別不能)\n' +
+      '- ページ右上のタイトルテキストは無視しました';
+    const apply = applyHideOmrResponse({ llmResponse });
+
+    expect(apply.hideBlockFound).toBe(true);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+    expect(apply.summaryText).toMatch(/Bach chorale/);
+    expect(apply.summaryText).toMatch(/12 小節/);
+    expect(apply.unresolved).toHaveLength(2);
+    expect(apply.unresolved[0].text).toMatch(/voice 3 の音価/);
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.issues).toEqual([]);
+    expect(apply.validation.chordLabels).toBeDefined();
+    expect(apply.validation.voiceLeadingObservations).toBeDefined();
+  });
+
+  it('handles a complete failure response (no block, only commentary)', () => {
+    const llmResponse =
+      '画像が完全に不鮮明で、いかなる音符も判別できませんでした。\n' +
+      'OMR は失敗です。\n\n' +
+      'UNRESOLVED:\n' +
+      '- すべて';
+    const apply = applyHideOmrResponse({ llmResponse });
+
+    expect(apply.hideBlockFound).toBe(false);
+    expect(apply.hideSource).toBeUndefined();
+    expect(apply.summaryText).toMatch(/OMR は失敗/);
+    expect(apply.unresolved).toHaveLength(1);
+    expect(apply.unresolved[0].text).toBe('すべて');
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.warnings.some(w => /見つかりませんでした/.test(w))).toBe(true);
+  });
+
+  it('handles a partial-success response (block + many UNRESOLVED items)', () => {
+    const partial = `[CLEF:TREBLE TIME:4/4 KEY:0 DIV:32]
+[1]| C5m | D5m |`;
+    const llmResponse =
+      '## 認識サマリ\n\n' +
+      '上声 (voice 1) のみ判別できました。下 3 声は不鮮明で UNRESOLVED に残しました。\n\n' +
+      fenceHide(partial) +
+      '\n\nUNRESOLVED:\n' +
+      '- voice 2 (アルト) は完全に不鮮明\n' +
+      '- voice 3 (テノール) は ト音譜表 8va bassa か通常か判別不能\n' +
+      '- voice 4 (バス) は譜面の下半分が切れている';
+    const apply = applyHideOmrResponse({ llmResponse });
+
+    expect(apply.hideBlockFound).toBe(true);
+    expect(apply.hideSource).toBe(partial);
+    expect(apply.unresolved).toHaveLength(3);
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.issues).toEqual([]);
+    // summary も拾えている
+    expect(apply.summaryText).toMatch(/voice 1.*のみ判別/);
+  });
+});
+
+// ============================================================
+// 契約不変量 / edge cases
+// ============================================================
+
+describe('applyHideOmrResponse — contractual invariants', () => {
+  it('hideBlockFound === (hideBlockCount > 0)', () => {
+    const cases = [
+      { llmResponse: 'no block', expectFound: false },
+      { llmResponse: fenceHide(CLEAN_TWO_PART), expectFound: true },
+      {
+        llmResponse: fenceHide(CLEAN_TWO_PART) + '\n' + fenceHide(CLEAN_TWO_PART),
+        expectFound: true,
+      },
+    ];
+    for (const c of cases) {
+      const apply = applyHideOmrResponse({ llmResponse: c.llmResponse });
+      expect(apply.hideBlockFound).toBe(apply.hideBlockCount > 0);
+      expect(apply.hideBlockFound).toBe(c.expectFound);
+    }
+  });
+
+  it('hideSource is undefined iff hideBlockCount === 0', () => {
+    const a = applyHideOmrResponse({ llmResponse: 'no block' });
+    expect(a.hideSource).toBeUndefined();
+
+    const b = applyHideOmrResponse({ llmResponse: fenceHide(CLEAN_TWO_PART) });
+    expect(b.hideSource).toBeDefined();
+  });
+
+  it('parsed=true ⇒ chordLabels & voiceLeadingObservations both defined', () => {
+    const apply = applyHideOmrResponse({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.validation.parsed).toBe(true);
+    expect(apply.validation.chordLabels).toBeDefined();
+    expect(apply.validation.voiceLeadingObservations).toBeDefined();
+  });
+
+  it('parsed=false ⇒ chordLabels & voiceLeadingObservations both undefined', () => {
+    const apply = applyHideOmrResponse({ llmResponse: 'no block' });
+    expect(apply.validation.parsed).toBe(false);
+    expect(apply.validation.chordLabels).toBeUndefined();
+    expect(apply.validation.voiceLeadingObservations).toBeUndefined();
+  });
+
+  it('does not throw on empty string input', () => {
+    expect(() => applyHideOmrResponse({ llmResponse: '' })).not.toThrow();
+    const apply = applyHideOmrResponse({ llmResponse: '' });
+    expect(apply.hideBlockFound).toBe(false);
+    expect(apply.summaryText).toBe('');
+    expect(apply.unresolved).toEqual([]);
+  });
+
+  it('idempotent: calling with the same input twice returns equivalent result', () => {
+    const llmResponse = fenceHide(CLEAN_TWO_PART) + '\nUNRESOLVED:\n- foo';
+    const a = applyHideOmrResponse({ llmResponse });
+    const b = applyHideOmrResponse({ llmResponse });
+    expect(a.hideSource).toBe(b.hideSource);
+    expect(a.summaryText).toBe(b.summaryText);
+    expect(a.unresolved).toEqual(b.unresolved);
+    expect(a.validation.parsed).toBe(b.validation.parsed);
+    expect(a.validation.issueKinds).toEqual(b.validation.issueKinds);
+  });
+});
+
+// ============================================================
+// barrel export smoke test
+// ============================================================
+
+describe('hideOmr — barrel export smoke', () => {
+  it('exports applyHideOmrResponse from src/index.ts', () => {
+    expect(typeof applyHideOmrResponseFromBarrel).toBe('function');
+    const apply = applyHideOmrResponseFromBarrel({
+      llmResponse: fenceHide(CLEAN_TWO_PART),
+    });
+    expect(apply.hideBlockFound).toBe(true);
+    expect(apply.hideSource).toBe(CLEAN_TWO_PART);
+    expect(apply.validation.parsed).toBe(true);
+  });
+
+  it('exports buildHideOmrPrompt from src/index.ts and round-trips into apply', () => {
+    expect(typeof buildHideOmrPromptFromBarrel).toBe('function');
+    const prompt = buildHideOmrPromptFromBarrel({
+      pageImages: [
+        {
+          base64: 'AAAA',
+          mediaType: 'image/png',
+          pageNumber: 1,
+        },
+      ],
+    });
+    expect(prompt.summary.imageCount).toBe(1);
+
+    // 模擬 LLM 応答 → apply
+    const fakeLlmResponse =
+      '認識サマリ\n\n' +
+      fenceHide(CLEAN_TWO_PART) +
+      '\n\nUNRESOLVED:\n- nothing';
+    const apply = applyHideOmrResponseFromBarrel({ llmResponse: fakeLlmResponse });
+    expect(apply.hideBlockFound).toBe(true);
+    expect(apply.unresolved).toHaveLength(1);
+    expect(apply.validation.parsed).toBe(true);
+  });
+});
