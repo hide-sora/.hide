@@ -1,8 +1,8 @@
-[TIME:3/4 KEY:1 DIV:8]
-[1]| D5k , | D5l D5k , | C5l B4k , | A4k B4k C5k , | B4l~ D5k , | E5l E5k , | E5k D5i C#5i D5k+ , | D5k C#5i B4i C#5k , | D5l~ D5k , | B4l E5k , | D5l.+ , | D5k F#5k E5k , | D5l~ F#5k , | E5k D5l+ , | D5k E5i F#5i G5k+ , | G5k F#5i E5i F#5k , | G5l~ ,,, |
-[2]| B4k , | B4l B4k , | G4k A4k D4k , | D4l. , | D4l B4k , | B4l A4k , | A4l B4k+ , | B4k A4k G4k , | A4l B4k , | G4l C5k , | A4l G4k , | A4k D5k C#5k , | D5l B4k , | G4k A4k B4k , | C5l B4i C5i , | D5k A4i G4i A4k , | B4l ,,, |
-[3]| Ri , | Rk. , | Rk G2i , | D3i D3i D3i , | G2k Ri , | Rk. , | Rk D3i , | G2i G2i G2i , | D3k Ri , | Rk. , | Rk G2i , | D3i D3i D3i , | D3k Ri , | Rk. , | Rk G2i , | D3i D3i D3i , | G2k ,,, |
-[4]| G4i , | G4k F#4i , | E4i F#4i G4i , | A4k. , | G4k~ G4i , | G4k A4i , | F#4i G4i A4i , | G4k. , | F#4k~ F#4i , | G4k G4i , | A4k B4i , | A4k. , | A4k~ B4i , | C5k B4i , | A4k B4i , | A4k. , | G4k~ ,,, |
-[5]| D4k , | G4k A4k B4k , | E4k C4k G4k , | G4k F#4i E4i F#4k , | D4l D4k , | G4k F#4k E4k , | F#4k E4k D4k , | E4l. , | A3l D4k , | E4l E4k , | A3k D4l , | D4l E4k , | F#4l F#4k , | G4k D4l , | D4l D4k , | D4l. , | D4l ,,, |
-[6]| B3k , | B3k C4k D4k , | G3k C4k D4k , | D4l A3k , | B3l B3k , | B3l E4k , | A3l D4k , | B3k E3k G3k , | D4l D4k , | D4l C4k , | C4l B3k , | F#3l G3k , | A3l D4k , | C4k A3k G3k , | A3l G3k , | A3i B3i C4l , | B3l ,,, |
-[7]| G3i , | E3k B2i , | C3i A2i G2i , | D3k. , | G2k G3i , | E3i D3i C#3i , | D3k B2i , | E3k. , | D3k B2i , | E3i F#3i G3i , | F#3i D3i G3i , | D3k. , | D3k B2i , | E3i F#3i G3i , | F#3i D3i G3i , | D3k. , | G2k ,,, |
+[TIME:3/4 KEY:G DIV:8]
+[1:Horn 1]| D5k , | D5l D5k , | C5l B4k , | A4k B4k C5k , | B4l~ D5k , | E5l E5k , | E5k D5i C#5i D5k+ , | D5k C#5i B4i C#5k , | D5l~ D5k , | B4l E5k , | D5l.+ , | D5k F#5k E5k , | D5l~ F#5k , | E5k D5l+ , | D5k E5i F#5i G5k+ , | G5k F#5i E5i F#5k , | G5l~ Rk ,,, |
+[2:Horn 2]| B4k , | B4l B4k , | G4k A4k D4k , | D4l. , | D4l B4k , | B4l A4k , | A4l B4k+ , | B4k A4k G4k , | A4l B4k , | G4l C5k , | A4l G4k , | A4k D5k C#5k , | D5l B4k , | G4k A4k B4k , | C5l B4i C5i , | D5k A4i G4i A4k , | B4l Rk ,,, |
+[3B:Timpani]| Rj , | Rl. , | Rl G2j , | D3j D3j D3j , | G2l Rj , | Rl. , | Rl D3j , | G2j G2j G2j , | D3l Rj , | Rl. , | Rl G2j , | D3j D3j D3j , | D3l Rj , | Rl. , | Rl G2j , | D3j D3j D3j , | G2l Rj ,,, |
+[4:Soprano]| G4j , | G4l F#4j , | E4j F#4j G4j , | A4l. , | G4l~ G4j , | G4l A4j , | F#4j G4j A4j , | G4l. , | F#4l~ F#4j , | G4l G4j , | A4l B4j , | A4l. , | A4l~ B4j , | C5l B4j , | A4l B4j , | A4l. , | G4l~ Rj ,,, |
+[5:Alto]| D4k , | G4k A4k B4k , | E4k C4k G4k , | G4k F#4i E4i F#4k , | D4l D4k , | G4k F#4k E4k , | F#4k E4k D4k , | E4l. , | A3l D4k , | E4l E4k , | A3k D4l , | D4l E4k , | F#4l F#4k , | G4k D4l , | D4l D4k , | D4l. , | D4l Rk ,,, |
+[6T-8:Tenor]| B3k , | B3k C4k D4k , | G3k C4k D4k , | D4l A3k , | B3l B3k , | B3l E4k , | A3l D4k , | B3k E3k G3k , | D4l D4k , | D4l C4k , | C4l B3k , | F#3l G3k , | A3l D4k , | C4k A3k G3k , | A3l G3k , | A3i B3i C4l , | B3l Rk ,,, |
+[7B:Bass]| G3j , | E3l B2j , | C3j A2j G2j , | D3l. , | G2l G3j , | E3j D3j C#3j , | D3l B2j , | E3l. , | D3l B2j , | E3j F#3j G3j , | F#3j D3j G3j , | D3l. , | D3l B2j , | E3j F#3j G3j , | F#3j D3j G3j , | D3l. , | G2l Rj ,,, |

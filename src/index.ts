@@ -72,12 +72,15 @@ export type {
   VoiceLeadingObservationKind,
 } from './hideVoiceLeading';
 
-// v1.9 MusicXML → .hide 逆変換 (Bach corpus 取り込み + LLM レビュー pipeline)
-export { musicXmlToHide } from './musicXmlToHide';
+// M2H: MusicXML → .hide v2.1 完全変換
+export { musicXmlToHide, m2h } from './musicXmlToHide';
 export type {
   MusicXmlToHideOptions,
   MusicXmlToHideResult,
   MusicXmlToHideDiagnostic,
+  MusicXmlToHideOptions as M2HOptions,
+  MusicXmlToHideResult as M2HResult,
+  MusicXmlToHideDiagnostic as M2HDiagnostic,
 } from './musicXmlToHide';
 
 // ============================================================
@@ -185,26 +188,20 @@ export type {
 } from './pdfHideLlmFallback';
 
 // ============================================================
-// End-to-end PDF→.hide (Audiveris OMR → musicXmlToHide)
+// End-to-end PDF→.hide (Node.js 専用 — ブラウザバンドルに含めない)
 // ============================================================
-
-export { pdfToHide, pdfToHideFromFile } from './pdfToHide';
+// Node-only の PDF/Audiveris/LLM 機能は直接パス指定で import する:
+//   import { pdfToHide } from 'hide-lang/dist/pdfToHide'
+//   import { runAudiveris } from 'hide-lang/dist/pdfHideAudiveris'
+//   import { pdfToImages } from 'hide-lang/dist/pdfToImages'
+//   import { reviewHideWithLlm } from 'hide-lang/dist/pdfHideLlmReview'
+//   import { createClaudeCaller } from 'hide-lang/dist/pdfHideLlm'
+//
+// 型のみ re-export (ランタイムコード無し):
 export type { PdfToHideOptions, PdfToHideResult } from './pdfToHide';
-
-// Audiveris CLI wrapper
-export { runAudiveris } from './pdfHideAudiveris';
 export type { AudiverisOptions, AudiverisResult } from './pdfHideAudiveris';
-
-// LLM レビュー (draft .hide + PDF画像 → 校正)
-export { reviewHideWithLlm } from './pdfHideLlmReview';
 export type { LlmReviewInput, LlmReviewResult } from './pdfHideLlmReview';
-
-// PDF→画像変換
-export { pdfToImages, pdfToImagesFromFile } from './pdfToImages';
 export type { PdfToImagesOptions, PdfToImagesResult } from './pdfToImages';
-
-// LLM 接続レイヤー
-export { createClaudeCaller } from './pdfHideLlm';
 export type { CallLlmFn, CallLlmInput, PdfHideLlmOptions } from './pdfHideLlm';
 
 // v1.9 ハモリ提案 LLM プロンプト構築層 (matrix mode の生成タスク向け consumer)
@@ -257,6 +254,7 @@ export type {
   HideUnit,
   HidePart,
   HidePartitionedAst,
+  HideNoteheadType,
   PartMeta,
 } from './hideTypes';
 

@@ -1,5 +1,5 @@
-[KEY:3 DIV:8]
-[1]| C#5i B4i , | A4k B4k C#5k~ E5k , | C#5k B4k A4k~ C#5k , | A4i B4i G#4k F#4k~ A4k , | B4k B4k F#4k E4k , | A4k B4k C#5k~ C#5k , | A4k B4k C#5k A4k , | G#4k F#4k G#4l~ , | F#4l F#4k F#4k+ , | F#4k F#4i E#4i F#4k~ ,,, |
-[2]| E4k , | F#4k E4k E4k E4k , | E4i A4i G#4k E4k G#4k , | F#4i G#4i E#4k C#4k F#4k , | F#4k E4k D#4k C#4k , | C#4i F#4i E4k E4k A4k , | F#4k F#4k G#4k F#4k , | F#4i E#4i F#4i F#3i C#4l , | C#4i D4i E4l D4i C#4i , | B3i C#4i D4k C#4k ,,, |
-[3]| A3i B3i , | C#4k B3k A3k B3k , | A3i E4i E4i D4i C#4k C#4k , | C#4i D4i C#4i B3i A3k C#4k , | B3k B3k B3i A3i G#3k , | F#3i D4i C#4i B3i A3k E4k , | D4k D4k C#4k C#4k , | D4i C#4i+ C#4i B3i E#3l , | F#3k C#4l B3i A#3i , | B3k B3k A#3k ,,, |
-[4]| A3i G#3i , | F#3k G#3k A3k G#3k , | A3i C#3i E3k A2k E#3k , | F#3i B2i C#3k F#2k F#3k , | G#3i F#3i G#3i A3i B3i B2i C#3k , | F#3k G#3k A3k A3k , | D4k B3k E#3k F#3k , | B2i C#3i D3k C#3l , | A#2l B2k C#3k , | D3k B2k F#3k ,,, |
+[KEY:F#m DIV:8]
+[1:Soprano]| C#5i B4i , | A4k B4k C#5k~ E5k , | C#5k B4k A4k~ C#5k , | A4i B4i G#4k F#4k~ A4k , | B4k B4k F#4k E4k , | A4k B4k C#5k~ C#5k , | A4k B4k C#5k A4k , | G#4k F#4k G#4l~ , | F#4l F#4k F#4k+ , | F#4k F#4i E#4i F#4k~ Rk ,,, |
+[2:Alto]| E4k , | F#4k E4k E4k E4k , | E4i A4i G#4k E4k G#4k , | F#4i G#4i E#4k C#4k F#4k , | F#4k E4k D#4k C#4k , | C#4i F#4i E4k E4k A4k , | F#4k F#4k G#4k F#4k , | F#4i E#4i F#4i F#3i C#4l , | C#4i D4i E4l D4i C#4i , | B3i C#4i D4k C#4k Rk ,,, |
+[3B:Tenor]| A3i B3i , | C#4k B3k A3k B3k , | A3i E4i E4i D4i C#4k C#4k , | C#4i D4i C#4i B3i A3k C#4k , | B3k B3k B3i A3i G#3k , | F#3i D4i C#4i B3i A3k E4k , | D4k D4k C#4k C#4k , | D4i C#4i+ C#4i B3i E#3l , | F#3k C#4l B3i A#3i , | B3k B3k A#3k Rk ,,, |
+[4B:Bass]| A3i G#3i , | F#3k G#3k A3k G#3k , | A3i C#3i E3k A2k E#3k , | F#3i B2i C#3k F#2k F#3k , | G#3i F#3i G#3i A3i B3i B2i C#3k , | F#3k G#3k A3k A3k , | D4k B3k E#3k F#3k , | B2i C#3i D3k C#3l , | A#2l B2k C#3k , | D3k B2k F#3k Rk ,,, |

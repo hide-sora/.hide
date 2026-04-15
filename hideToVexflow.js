@@ -18,15 +18,21 @@ const {
   Renderer,
   Stave,
   StaveNote,
+  GhostNote,
   StaveConnector,
   Voice,
   Formatter,
   Accidental,
   Articulation,
+  Ornament,
   StaveTie,
   Curve,
   Annotation,
   Dot,
+  TextNote,
+  GraceNote,
+  GraceNoteGroup,
+  NoteHead,
 } = VexFlow;
 
 // ============================================================
@@ -372,33 +378,155 @@ function flattenTokens(tokens) {
 // HideNoteToken / HideRestToken → VexFlow StaveNote
 // ============================================================
 
+/**
+ * VexFlow Articulation code 一覧 (v2.1 全対応):
+ *   a.  = staccato        av  = staccatissimo
+ *   a>  = accent           a^  = marcato
+ *   a-  = tenuto           a@a = fermata (above)
+ *   a|  = up-bow           am  = down-bow
+ *   ao  = harmonic (open)  ah  = snap pizzicato (Bartók)
+ *   a+  = stopped/mute
+ */
+const ARTICULATION_MAP = {
+  staccato:      'a.',
+  staccatissimo: 'av',
+  accent:        'a>',
+  marcato:       'a^',
+  tenuto:        'a-',
+  upBow:         'a|',
+  downBow:       'am',
+  harmonicNote:  'ao',
+  snapPizz:      'ah',
+  stopped:       'a+',
+};
+
+/**
+ * VexFlow Ornament code 一覧:
+ *   tr = trill           mordent = mordent
+ *   mordent_inverted = inverted mordent
+ *   turn = turn          turn_inverted = inverted turn
+ */
+const ORNAMENT_MAP = {
+  trill:           'tr',
+  mordent:         'mordent',
+  invertedMordent: 'mordent_inverted',
+  turn:            'turn',
+  invertedTurn:    'turn_inverted',
+};
+
 function tokenToStaveNote(tok, div, clef) {
   const durStr = unitsToVexDuration(tok.durationUnits, div);
   if (!durStr) return null;
 
   if (tok.kind === 'rest') {
     const restNote = new StaveNote({ keys: ['b/4'], duration: `${durStr}r`, clef });
-    if (tok.staccato) {
-      restNote.addModifier(new Articulation('a.').setPosition(3), 0);
-    }
     return restNote;
   }
 
   if (tok.pitches.length === 0) return null;
 
   const keys = tok.pitches.map(pitchToVexKey);
-  const note = new StaveNote({ keys, duration: durStr, clef });
 
+  // v2.1: notehead variant → VexFlow noteType parameter
+  let noteType = undefined;
+  if (tok.notehead === 'x') noteType = 'x';
+  else if (tok.notehead === 'diamond') noteType = 'h';   // VexFlow 'h' = harmonic/diamond
+  else if (tok.notehead === 'slash') noteType = 's';
+  else if (tok.notehead === 'triangle') noteType = 't';
+
+  const noteOpts = { keys, duration: durStr, clef };
+  if (noteType) noteOpts.type = noteType;
+  const note = new StaveNote(noteOpts);
+
+  // Accidentals
   tok.pitches.forEach((p, idx) => {
     if (p.alter === 1) note.addModifier(new Accidental('#'), idx);
     else if (p.alter === -1) note.addModifier(new Accidental('b'), idx);
-    else if (p.accidentalExplicit) note.addModifier(new Accidental('n'), idx);
+    else if (p.alter === 2) note.addModifier(new Accidental('##'), idx);
+    else if (p.alter === -2) note.addModifier(new Accidental('bb'), idx);
   });
 
-  if (tok.staccato) {
-    note.addModifier(new Articulation('a.').setPosition(3), 0);
+  // Articulations (single-char suffixes)
+  for (const [prop, code] of Object.entries(ARTICULATION_MAP)) {
+    if (tok[prop]) {
+      try {
+        note.addModifier(new Articulation(code).setPosition(3), 0);
+      } catch (e) {
+        console.warn(`[hideToVexflow] articulation ${code} failed`, e);
+      }
+    }
   }
 
+  // Fermata (with variant support)
+  if (tok.fermata) {
+    try {
+      // VexFlow: a@a = fermata above, a@u = fermata below
+      // short/long variants are rendered as normal fermata in VexFlow (no built-in shape support)
+      note.addModifier(new Articulation('a@a').setPosition(3), 0);
+    } catch (e) {
+      console.warn('[hideToVexflow] fermata failed', e);
+    }
+  }
+
+  // Ornaments (2-char suffixes)
+  for (const [prop, code] of Object.entries(ORNAMENT_MAP)) {
+    if (tok[prop]) {
+      try {
+        note.addModifier(new Ornament(code), 0);
+      } catch (e) {
+        console.warn(`[hideToVexflow] ornament ${code} failed`, e);
+      }
+    }
+  }
+
+  // Tremolo (z1/z2/z3)
+  if (tok.tremolo > 0) {
+    try {
+      note.addModifier(new Ornament('tremolo').setPosition(3), 0);
+    } catch (e) {
+      console.warn('[hideToVexflow] tremolo failed', e);
+    }
+  }
+
+  // Vibrato
+  if (tok.vibrato) {
+    try {
+      note.addModifier(new Ornament('vibrato'), 0);
+    } catch (e) {
+      console.warn('[hideToVexflow] vibrato failed', e);
+    }
+  }
+
+  // Jazz articulations (fall, doit, plop, scoop) — rendered as Ornament where supported
+  if (tok.fall) {
+    try { note.addModifier(new Ornament('fall').setPosition(3), 0); } catch (e) {
+      console.warn('[hideToVexflow] fall failed', e);
+    }
+  }
+  if (tok.doit) {
+    try { note.addModifier(new Ornament('doit').setPosition(3), 0); } catch (e) {
+      console.warn('[hideToVexflow] doit failed', e);
+    }
+  }
+  if (tok.plop) {
+    try { note.addModifier(new Ornament('plop').setPosition(3), 0); } catch (e) {
+      console.warn('[hideToVexflow] plop failed', e);
+    }
+  }
+  if (tok.scoop) {
+    try { note.addModifier(new Ornament('scoop').setPosition(3), 0); } catch (e) {
+      console.warn('[hideToVexflow] scoop failed', e);
+    }
+  }
+
+  // Bend
+  if (tok.bend) {
+    try { note.addModifier(new Ornament('bend').setPosition(3), 0); } catch (e) {
+      console.warn('[hideToVexflow] bend failed', e);
+    }
+  }
+
+  // Lyrics
   if (tok.lyric) {
     const ann = new Annotation(tok.lyric)
       .setVerticalJustification(Annotation.VerticalJustify.BOTTOM);

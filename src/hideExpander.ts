@@ -269,6 +269,8 @@ function sumPlayableUnits(
 ): number {
   let sum = 0;
   for (const t of tokens) {
+    // 装飾音 (grace note) は演奏長 0 なので合計に含めない
+    if (t.kind === 'note' && t.graceType) continue;
     if (t.kind === 'note' || t.kind === 'rest') {
       // tuplet メンバーは額面 durationUnits ではなく実際の演奏長を使う
       if (t.tupletMember) {

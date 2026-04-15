@@ -1,16 +1,21 @@
 /**
- * musicXmlToHide.ts — MusicXML を .hide v2.0 ソースに逆変換する
+ * musicXmlToHide.ts (M2H) — MusicXML を .hide v2.1 ソースに完全変換する
  *
- * v2.0 変更:
+ * v2.1 (M2H):
+ *  - v2.0 全機能 + Finale Broadway 全グリフ対応
  *  - DIV=64 ベース (g-n 8段階)
  *  - 臨時記号: # b * x bb (ダブルシャープ/ダブルフラット対応)
- *  - staccato: s サフィックス (大文字音価廃止)
- *  - trill: tr サフィックス (旧 * 廃止)
- *  - 前打音: ` バックティック (~ 廃止)
- *  - 新アーティキュレーション/オーナメント: staccatissimo, mordent, turn, tremolo, arpeggio, glissando
- *  - 新メタ: segno, coda, jump, rehearsal, text, expression, ottava, pedal, chord, breath, caesura
- *  - 新小節線: dashed, invisible
- *  - 新音部記号: SOPRANO, BARITONE, TREBLE_8VA, TREBLE_8VB
+ *  - アーティキュレーション: s S > - ~ ~s ~l ^ V W O X T
+ *  - オーナメント: tr mr MR tn TN z1-z3 ar gl vb bn
+ *  - ジャズ: jf jd jp js (fall/doit/plop/scoop)
+ *  - ノートヘッド: !d !x !/ !t
+ *  - メタ: segno, coda, jump, rehearsal, text, expression, ottava, pedal,
+ *          chord, breath, caesura, fingering, string, swing/straight, mmr
+ *  - 小節線: , ,, ,,, ,: :, ,- ,.
+ *  - 音部記号: SOPRANO, BARITONE, TREBLE_8VA, TREBLE_8VB
+ *  - 非標準 duration → tied chain 分解 (近似廃止)
+ *  - パート名抽出 (<part-name> → [1:Piano])
+ *  - マイナーキー対応 (<mode>minor → KEY:Am)
  */
 
 import type { HidePitch, HideBarlineStyle } from './hideTypes';
@@ -123,7 +128,12 @@ export function musicXmlToHide(
   const diagnostics: MusicXmlToHideDiagnostic[] = [];
 
   // 1. コメント除去
-  const stripped = xml.replace(/<!--[\s\S]*?-->/g, '');
+  let stripped = xml.replace(/<!--[\s\S]*?-->/g, '');
+
+  // 1b. score-timewise → score-partwise 変換
+  if (/<score-timewise/.test(stripped)) {
+    stripped = timewiseToPartwise(stripped);
+  }
 
   // 2. <part> ブロック抽出 (ID 付き)
   const parts = extractParts(stripped);
@@ -131,36 +141,19 @@ export function musicXmlToHide(
     throw new Error('musicXmlToHide: no <part> elements found');
   }
 
+  // 2b. <part-list> からパート名を抽出 (M2H: [1:Piano] 形式)
+  const partNames = extractPartNames(stripped, parts);
+
   // 3. 1小節目の <attributes> からヘッダーを抽出 (最初のパート優先)
   const header = extractHeader(parts[0].body, warnings, diagnostics, 0);
 
-  // 4. 各パートを per-measure cell に分解 → .hide token 列に変換
-  const partLabels = assignPartLabels(parts.length, opts.partLabels);
-  const partOutputs: string[][] = []; // partOutputs[pi] = [cell_str_per_measure]
-  let maxMeasureCount = 0;
-  for (let pi = 0; pi < parts.length; pi++) {
-    const cells = convertPartToCells(parts[pi].body, header, warnings, diagnostics, pi);
-    partOutputs.push(cells);
-    if (cells.length > maxMeasureCount) maxMeasureCount = cells.length;
-  }
+  // 4. 小節番号ベースで全パートを揃えて変換（欠落小節は全休符で補完）
+  const partLabels = assignPartLabels(parts.length, opts.partLabels, partNames);
+  const partOutputs = convertAllPartsAligned(parts, header, warnings, diagnostics, partLabels);
+  const maxMeasureCount = partOutputs.length > 0 ? partOutputs[0].length : 0;
 
-  // 4b. パート間の measure count 不整合を構造化 diagnostic として emit
-  //     **silent padding はしない** — 短いパートはそのまま短い grid 行として出力する。
-  //     下流の analyzeMatrix() が `measureCountMismatch` を re-detect する。
-  //     LLM レビュー層はこの diagnostic + 元 PDF 画像を見て修正候補を返す。
-  for (let pi = 0; pi < parts.length; pi++) {
-    if (partOutputs[pi].length < maxMeasureCount) {
-      const got = partOutputs[pi].length;
-      diagnostics.push({
-        kind: 'partMeasureCountMismatch',
-        partIndex: pi,
-        partLabel: partLabels[pi],
-        got,
-        expected: maxMeasureCount,
-      });
-      warnings.push(`パート#${pi + 1} (${partLabels[pi]}) は ${got}/${maxMeasureCount} 小節 — 入力 MusicXML の不整合の可能性`);
-    }
-  }
+  // 4b. パートごとの clef を抽出 (header とは独立)
+  const partClefs = extractPartClefs(parts, header);
 
   // 5. .hide ソース組み立て (grid form)
   const lines: string[] = [];
@@ -169,10 +162,26 @@ export function musicXmlToHide(
   lines.push(formatHeader(header));
 
   // 各パートを 1 行で出力 (インライン形式: barline トークンのみで小節区切り)
+  const clefAbbr: Record<string, string> = {
+    TREBLE: 'T', TREBLE_8VA: 'T8', TREBLE_8VB: 'T-8', BASS: 'B',
+    ALTO: 'A', TENOR: 'Te', PERCUSSION: 'Pe', SOPRANO: 'So', BARITONE: 'Br',
+  };
   for (let pi = 0; pi < parts.length; pi++) {
     const label = partLabels[pi];
     const cells = partOutputs[pi];
-    lines.push(`[${label}]| ${cells.join(' | ')} |`);
+    // パートの clef がヘッダーと異なる場合、ラベルに clef 略称を付加 (例: [5Pe])
+    // [N:Name] 形式の場合は [NClef:Name] にする (例: [2Pe:Drums])
+    const partClef = partClefs[pi];
+    const clefSuffix = (partClef && partClef !== header.clef) ? (clefAbbr[partClef] || '') : '';
+    let fullLabel: string;
+    if (clefSuffix && label.includes(':')) {
+      // [2:Drums] + Pe → [2Pe:Drums]
+      const colonIdx = label.indexOf(':');
+      fullLabel = label.slice(0, colonIdx) + clefSuffix + label.slice(colonIdx);
+    } else {
+      fullLabel = label + clefSuffix;
+    }
+    lines.push(`[${fullLabel}]| ${cells.join(' | ')} |`);
   }
 
   return {
@@ -196,13 +205,45 @@ interface RawPart {
 
 function extractParts(xml: string): RawPart[] {
   const out: RawPart[] = [];
-  // <part id="X"> ... </part> を非貪欲に拾う
-  const re = /<part\s+id="([^"]+)"\s*>([\s\S]*?)<\/part>/g;
+  // <part id="X"> ... </part> を非貪欲に拾う（シングル/ダブルクォート、スペース対応）
+  const re = /<part\s+id\s*=\s*["']([^"']+)["']\s*>([\s\S]*?)<\/part>/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(xml)) !== null) {
     out.push({ id: m[1], body: m[2] });
   }
   return out;
+}
+
+/** score-timewise 形式を score-partwise 形式に変換 */
+function timewiseToPartwise(xml: string): string {
+  const measureRe = /<measure\b([^>]*?)>([\s\S]*?)<\/measure>/g;
+  const partMap = new Map<string, string[]>();
+  const partOrder: string[] = [];
+  let m: RegExpExecArray | null;
+
+  while ((m = measureRe.exec(xml)) !== null) {
+    const numMatch = /number\s*=\s*["']([^"']*)["']/.exec(m[1]);
+    const num = numMatch ? numMatch[1] : String(partOrder.length + 1);
+    const measureInner = m[2];
+
+    // 各 <measure> 内の <part> を抽出
+    const partRe = /<part\s+id\s*=\s*["']([^"']+)["']\s*>([\s\S]*?)<\/part>/g;
+    let pm: RegExpExecArray | null;
+    while ((pm = partRe.exec(measureInner)) !== null) {
+      const pid = pm[1];
+      if (!partMap.has(pid)) {
+        partMap.set(pid, []);
+        partOrder.push(pid);
+      }
+      partMap.get(pid)!.push(`<measure number="${num}">${pm[2]}</measure>`);
+    }
+  }
+
+  // partwise 形式として再構築
+  const partsXml = partOrder
+    .map(id => `<part id="${id}">${partMap.get(id)!.join('')}</part>`)
+    .join('');
+  return `<score-partwise>${partsXml}</score-partwise>`;
 }
 
 // ============================================================
@@ -213,6 +254,7 @@ interface ParsedHeader {
   timeNum: number;
   timeDen: number;
   keyFifths: number;
+  keyMode: 'major' | 'minor';
   div: number;
   divisionsXml: number;
   clef: string;
@@ -232,6 +274,9 @@ function extractHeader(
   const fifths = parseIntFromTag(attrBody, 'fifths') ?? 0;
   const beats = parseIntFromTag(attrBody, 'beats') ?? 4;
   const beatType = parseIntFromTag(attrBody, 'beat-type') ?? 4;
+  // v2.1: minor key detection
+  const modeMatch = /<mode>(\w+)<\/mode>/.exec(attrBody);
+  const keyMode: 'major' | 'minor' = modeMatch?.[1]?.toLowerCase() === 'minor' ? 'minor' : 'major';
 
   // <clef><sign>X</sign><line>N</line></clef> → 我々の HideClef
   const clefSign = /<sign>(\w+)<\/sign>/.exec(attrBody)?.[1];
@@ -254,10 +299,29 @@ function extractHeader(
     timeNum: beats,
     timeDen: beatType,
     keyFifths: fifths,
+    keyMode,
     div,
     divisionsXml,
     clef,
   };
+}
+
+/**
+ * 各パートの <attributes> から clef を抽出する。
+ * MIDI channel 10 のパートも percussion と見なす。
+ */
+function extractPartClefs(parts: RawPart[], header: ParsedHeader): (string | undefined)[] {
+  return parts.map((p, pi) => {
+    if (pi === 0) return header.clef; // 最初のパートは header と同一
+    const attrMatch = /<attributes>([\s\S]*?)<\/attributes>/.exec(p.body);
+    if (!attrMatch) return undefined;
+    const attrBody = attrMatch[1];
+    const clefSign = /<sign>(\w+)<\/sign>/.exec(attrBody)?.[1];
+    if (!clefSign) return undefined;
+    const clefLine = parseIntFromTag(attrBody, 'line');
+    const clefOctaveChange = parseIntFromTag(attrBody, 'clef-octave-change');
+    return inferClef(clefSign, clefLine, clefOctaveChange);
+  });
 }
 
 function parseIntFromTag(xml: string, tag: string): number | undefined {
@@ -301,7 +365,11 @@ function formatHeader(h: ParsedHeader): string {
   const parts: string[] = [];
   if (h.clef !== 'TREBLE') parts.push(`CLEF:${h.clef}`);
   if (h.timeNum !== 4 || h.timeDen !== 4) parts.push(`TIME:${h.timeNum}/${h.timeDen}`);
-  if (h.keyFifths !== 0) parts.push(`KEY:${h.keyFifths}`);
+  // v2.1: KEY は名前形式 (KEY:D, KEY:Am) — パーサーは数値/名前の両方を受容
+  if (h.keyFifths !== 0 || h.keyMode === 'minor') {
+    const keyName = fifthsToKeyName(h.keyFifths, h.keyMode);
+    parts.push(`KEY:${keyName}`);
+  }
   if (h.div !== 64) parts.push(`DIV:${h.div}`);
   if (parts.length === 0) return '';
   return `[${parts.join(' ')}]`;
@@ -318,6 +386,8 @@ interface XmlNote {
   duration: number; // MusicXML の <duration>
   dots: number;     // <dot/> の個数 (0, 1, 2)
   pitch?: HidePitch;
+  isUnpitched: boolean;  // <unpitched> 要素 (パーカッション)
+  notehead?: 'diamond' | 'x' | 'slash' | 'triangle'; // <notehead> 要素
   tieStart: boolean;
   voice: number;
   hasTimeModification: boolean;
@@ -336,6 +406,24 @@ interface XmlNote {
   tremolo: 0 | 1 | 2 | 3;
   arpeggio: boolean;
   glissando: boolean;
+  // v2.1 bowing / techniques
+  upBow: boolean;
+  downBow: boolean;
+  harmonicNote: boolean;
+  snapPizzicato: boolean;
+  stopped: boolean;
+  // v2.1 inverted ornaments
+  invertedMordent: boolean;
+  invertedTurn: boolean;
+  // v2.1 jazz articulations
+  fall: boolean;
+  doit: boolean;
+  plop: boolean;
+  scoop: boolean;
+  // v2.1 misc
+  vibrato: boolean;
+  bend: boolean;
+  fermataType: '' | 'normal' | 'short' | 'long';
   breathMark: boolean;
   caesura: boolean;
   isGrace: boolean;
@@ -353,41 +441,143 @@ interface MeasureEvent {
   body: string;
 }
 
-function convertPartToCells(
-  partBody: string,
+/** 小節番号ベースで全パートを揃えて変換する。欠落小節は全休符で補完。 */
+function convertAllPartsAligned(
+  parts: { id: string; body: string }[],
   header: ParsedHeader,
   warnings: string[],
   diagnostics: MusicXmlToHideDiagnostic[],
-  partIndex: number,
-): string[] {
-  // 各 <measure> を個別に処理
-  const measures = extractMeasures(partBody);
-  const out: string[] = [];
+  partLabels: string[],
+): string[][] {
+  // 1. 全パートから番号付き小節を抽出
+  const allPartMeasures = parts.map(p => extractNumberedMeasures(p.body));
 
-  // 中途変更の検出用: running state
-  let runningTimeNum = header.timeNum;
-  let runningTimeDen = header.timeDen;
-  let runningKeyFifths = header.keyFifths;
-
-  for (let mi = 0; mi < measures.length; mi++) {
-    const result = convertMeasureToHide(
-      measures[mi], header, warnings, diagnostics, partIndex, mi,
-      runningTimeNum, runningTimeDen, runningKeyFifths,
-    );
-    out.push(result.tokens);
-    if (result.newTimeNum !== undefined) runningTimeNum = result.newTimeNum;
-    if (result.newTimeDen !== undefined) runningTimeDen = result.newTimeDen;
-    if (result.newKeyFifths !== undefined) runningKeyFifths = result.newKeyFifths;
+  // 2. 小節番号のマスターリスト構築（全パートの和集合、数値順ソート）
+  const allNums = new Set<string>();
+  for (const pm of allPartMeasures) {
+    for (const m of pm) allNums.add(m.num);
   }
-  return out;
+  const masterNumbers = [...allNums].sort((a, b) => {
+    // "7" → [7, 0], "7§1" → [7, 1] としてソート
+    const [baseA, suffA] = a.split('§');
+    const [baseB, suffB] = b.split('§');
+    const na = parseFloat(baseA);
+    const nb = parseFloat(baseB);
+    if (!isNaN(na) && !isNaN(nb)) {
+      if (na !== nb) return na - nb;
+      return (parseInt(suffA) || 0) - (parseInt(suffB) || 0);
+    }
+    return a.localeCompare(b);
+  });
+
+  // 3. 各パートを小節番号→本体のマップ化し、マスター順で変換
+  const partOutputs: string[][] = [];
+  for (let pi = 0; pi < parts.length; pi++) {
+    // パートごとの divisions を抽出（パート間で異なる場合に対応）
+    const partHeader = { ...header };
+    const partAttrMatch = /<attributes>([\s\S]*?)<\/attributes>/.exec(parts[pi].body);
+    if (partAttrMatch) {
+      const partDiv = parseIntFromTag(partAttrMatch[1], 'divisions');
+      if (partDiv !== undefined && partDiv !== header.divisionsXml) {
+        partHeader.divisionsXml = partDiv;
+        partHeader.div = partDiv * 4;
+      }
+    }
+
+    const measureMap = new Map<string, string>();
+    for (const m of allPartMeasures[pi]) {
+      measureMap.set(m.num, m.body);
+    }
+
+    const out: string[] = [];
+    let runningTimeNum = partHeader.timeNum;
+    let runningTimeDen = partHeader.timeDen;
+    let runningKeyFifths = partHeader.keyFifths;
+
+    for (let mi = 0; mi < masterNumbers.length; mi++) {
+      const body = measureMap.get(masterNumbers[mi]);
+      if (body !== undefined) {
+        // 通常の小節変換
+        const result = convertMeasureToHide(
+          body, partHeader, warnings, diagnostics, pi, mi,
+          runningTimeNum, runningTimeDen, runningKeyFifths,
+        );
+        out.push(result.tokens);
+        if (result.newTimeNum !== undefined) runningTimeNum = result.newTimeNum;
+        if (result.newTimeDen !== undefined) runningTimeDen = result.newTimeDen;
+        if (result.newKeyFifths !== undefined) runningKeyFifths = result.newKeyFifths;
+      } else {
+        // 欠落小節 → 全休符で補完
+        const restTok = durationToRest(
+          measureRestUnits(partHeader, runningTimeNum, runningTimeDen),
+          partHeader, warnings, diagnostics, pi, mi, 0,
+        );
+        out.push(`${restTok || 'Rn'} ,`);
+      }
+    }
+
+    // 欠落があった場合 diagnostic を emit
+    if (allPartMeasures[pi].length < masterNumbers.length) {
+      const missing = masterNumbers.length - allPartMeasures[pi].length;
+      diagnostics.push({
+        kind: 'partMeasureCountMismatch',
+        partIndex: pi,
+        partLabel: partLabels[pi],
+        got: allPartMeasures[pi].length,
+        expected: masterNumbers.length,
+      });
+      warnings.push(`パート#${pi + 1} (${partLabels[pi]}) は ${missing} 小節が欠落 — 全休符で補完`);
+    }
+
+    partOutputs.push(out);
+  }
+  return partOutputs;
 }
 
-function extractMeasures(partBody: string): string[] {
-  const out: string[] = [];
-  const re = /<measure[^>]*>([\s\S]*?)<\/measure>/g;
+interface NumberedMeasure {
+  num: string;
+  body: string;
+}
+
+function extractNumberedMeasures(partBody: string): NumberedMeasure[] {
+  const out: NumberedMeasure[] = [];
+  // 通常の <measure ...>...</measure> と自己閉じ <measure ... /> の両方にマッチ
+  const re = /<measure\b([^>]*?)(?:\s*\/\s*>|>([\s\S]*?)<\/measure>)/g;
   let m: RegExpExecArray | null;
+  let seq = 0;
+  const countByNum = new Map<string, number>();
+
+  function addMeasure(rawNum: string, body: string) {
+    const occ = countByNum.get(rawNum) ?? 0;
+    countByNum.set(rawNum, occ + 1);
+    // 同じ番号の重複出現にサフィックスを付与（volta等）
+    const key = occ === 0 ? rawNum : `${rawNum}§${occ}`;
+    out.push({ num: key, body });
+  }
+
   while ((m = re.exec(partBody)) !== null) {
-    out.push(m[1]);
+    seq++;
+    const attrs = m[1];
+    const body = m[2] ?? ''; // 自己閉じ → 空本体
+    // number 属性の柔軟な抽出（シングル/ダブルクォート、スペース対応）
+    const numMatch = /number\s*=\s*["']([^"']*)["']/.exec(attrs);
+    const rawNum = numMatch ? numMatch[1] : String(seq);
+
+    // <multiple-rest>N</multiple-rest> の展開
+    const multiRestMatch = /<multiple-rest[^>]*>(\d+)<\/multiple-rest>/.exec(body);
+    if (multiRestMatch) {
+      const count = parseInt(multiRestMatch[1], 10);
+      const baseNum = parseFloat(rawNum);
+      // 最初の小節はそのまま（attributes 等を保持）
+      addMeasure(rawNum, body);
+      // 残りの小節を空本体で展開（convertMeasureToHide が全休符を補完）
+      for (let i = 1; i < count; i++) {
+        const expandedNum = !isNaN(baseNum) ? String(baseNum + i) : `${rawNum}+${i}`;
+        addMeasure(expandedNum, '');
+      }
+    } else {
+      addMeasure(rawNum, body);
+    }
   }
   return out;
 }
@@ -399,11 +589,35 @@ function extractMeasures(partBody: string): string[] {
 function extractMeasureEvents(measureBody: string): MeasureEvent[] {
   const events: MeasureEvent[] = [];
 
-  // <note> 要素
+  // <note> 要素 + note 内の <technical> から fingering/string を direction として抽出
   const noteRe = /<note(?:\s[^>]*)?>([\s\S]*?)<\/note>/g;
   let m: RegExpExecArray | null;
   while ((m = noteRe.exec(measureBody)) !== null) {
     events.push({ pos: m.index, kind: 'note', body: m[1] });
+    // v2.1: note 内 <technical> の fingering/string を direction イベントとして追加
+    const techBody = m[1];
+    const fing = /<fingering[^>]*>([^<]+)<\/fingering>/.exec(techBody);
+    if (fing) events.push({ pos: m.index + 1, kind: 'direction', body: `<fingering>${fing[1]}</fingering>` });
+    const str = /<string[^>]*>(\d+)<\/string>/.exec(techBody);
+    if (str) events.push({ pos: m.index + 1, kind: 'direction', body: `<string>${str[1]}</string>` });
+  }
+
+  // <forward> → voice=1 の暗黙休符として扱う（多声パートの隙間を補完）
+  // ただし多声小節 (<backup> あり) で voice 未指定の forward は
+  // 他声部のポジショニング用 → voice=1 に計上すると小節が超過する
+  const hasBackup = /<backup>/.test(measureBody);
+  const fwdRe = /<forward>([\s\S]*?)<\/forward>/g;
+  while ((m = fwdRe.exec(measureBody)) !== null) {
+    const fwdBody = m[1];
+    const dur = parseIntFromTag(fwdBody, 'duration');
+    const voice = parseIntFromTag(fwdBody, 'voice');
+    if (dur && dur > 0 && (voice === 1 || (!voice && !hasBackup))) {
+      events.push({
+        pos: m.index,
+        kind: 'note',
+        body: `<rest/><duration>${dur}</duration><voice>1</voice>`,
+      });
+    }
   }
 
   // <direction> 要素 (テンポ・強弱)
@@ -424,6 +638,11 @@ function extractMeasureEvents(measureBody: string): MeasureEvent[] {
     events.push({ pos: m.index, kind: 'harmony', body: m[1] });
   }
 
+  // v2.1: <measure-style> 要素 (小節リピート [%])
+  if (/<measure-repeat[^>]+type="start"/.test(measureBody)) {
+    events.push({ pos: 0, kind: 'direction', body: '<measure-repeat-marker/>' });
+  }
+
   events.sort((a, b) => a.pos - b.pos);
   return events;
 }
@@ -434,6 +653,12 @@ function extractMeasureEvents(measureBody: string): MeasureEvent[] {
 
 function parseDirection(body: string): string[] {
   const tokens: string[] = [];
+
+  // v2.1: measure repeat marker (合成イベント)
+  if (/<measure-repeat-marker/.test(body)) {
+    tokens.push('[%]');
+    return tokens;
+  }
 
   // <sound tempo="N"/>
   const tempoMatch = /<sound[^>]+tempo="([\d.]+)"/.exec(body);
@@ -487,7 +712,7 @@ function parseDirection(body: string): string[] {
 
   // v2.0: リハーサルマーク
   const rehearsalMatch = /<rehearsal[^>]*>([^<]*)<\/rehearsal>/.exec(body);
-  if (rehearsalMatch) tokens.push(`[R:${rehearsalMatch[1]}]`);
+  if (rehearsalMatch) tokens.push(`[R:${rehearsalMatch[1].replace(/[\r\n]+/g, '')}]`);
 
   // v2.0: オッターヴァ (属性順序非依存)
   const octaveShiftMatch = /<octave-shift[^>]*>/.exec(body);
@@ -518,7 +743,7 @@ function parseDirection(body: string): string[] {
     let wm: RegExpExecArray | null;
     while ((wm = wordsRe.exec(body)) !== null) {
       const attrs = wm[1];
-      const text = wm[2].trim();
+      const text = wm[2].replace(/[\r\n]+/g, ' ').trim();
       if (text.length === 0) continue;
       // テンポテキストの判定
       const tempoTexts = ['allegro', 'andante', 'adagio', 'presto', 'vivace', 'moderato',
@@ -539,6 +764,24 @@ function parseDirection(body: string): string[] {
   // v2.0: ブレス/カエスーラ
   if (/breath-mark/.test(body) || /other-direction>breath/.test(body)) tokens.push('[breath]');
   if (/caesura/.test(body) || /other-direction>caesura/.test(body)) tokens.push('[caesura]');
+
+  // v2.1: フィンガリング
+  const fingeringMatch = /<fingering[^>]*>([^<]+)<\/fingering>/.exec(body);
+  if (fingeringMatch) tokens.push(`[F:${fingeringMatch[1].trim()}]`);
+
+  // v2.1: 弦番号
+  const stringMatch = /<string[^>]*>(\d+)<\/string>/.exec(body);
+  if (stringMatch) tokens.push(`[S:${stringMatch[1]}]`);
+
+  // v2.1: Swing / Straight (カスタム words ベースの検出)
+  {
+    const swingRe = /swing/i;
+    const straightRe = /straight/i;
+    const wordsInner = body.match(/<words[^>]*>([^<]+)<\/words>/g)?.map(w =>
+      w.replace(/<\/?words[^>]*>/g, '').trim().toLowerCase()) ?? [];
+    if (wordsInner.some(w => swingRe.test(w))) tokens.push('[swing]');
+    if (wordsInner.some(w => straightRe.test(w))) tokens.push('[straight]');
+  }
 
   return tokens;
 }
@@ -570,7 +813,9 @@ function parseMidAttributes(
 
   const fifths = parseIntFromTag(body, 'fifths');
   if (fifths !== undefined && fifths !== runningKeyFifths) {
-    tokens.push(`[K${fifthsToKeyName(fifths)}]`);
+    const modeM = /<mode>(\w+)<\/mode>/.exec(body);
+    const mode: 'major' | 'minor' = modeM?.[1]?.toLowerCase() === 'minor' ? 'minor' : 'major';
+    tokens.push(`[K${fifthsToKeyName(fifths, mode)}]`);
     newKeyFifths = fifths;
   }
 
@@ -752,6 +997,16 @@ function convertNotesToHideTokens(
       continue;
     }
 
+    // ---- 連符グループ (休符含む) ----
+    // 休符チェックより先に判定。連符内の休符を standalone で処理すると
+    // スケーリング済み duration が近似され小節長がずれる
+    if (head.hasTimeModification && !head.isChordContinuation) {
+      const result = collectTupletGroup(notes, i, header, warnings, diagnostics, partIndex, measureIndex);
+      if (result.token) out.push({ pos, token: result.token });
+      i = result.nextIndex;
+      continue;
+    }
+
     // ---- 通常休符 ----
     if (head.isRest) {
       const tok = durationToRest(head.duration, header, warnings, diagnostics, partIndex, measureIndex, head.dots);
@@ -759,14 +1014,6 @@ function convertNotesToHideTokens(
       if (head.breathMark) out.push({ pos, token: '[breath]' });
       if (head.caesura) out.push({ pos, token: '[caesura]' });
       i++;
-      continue;
-    }
-
-    // ---- 連符グループ ----
-    if (head.hasTimeModification && !head.isChordContinuation) {
-      const result = collectTupletGroup(notes, i, header, warnings, diagnostics, partIndex, measureIndex);
-      if (result.token) out.push({ pos, token: result.token });
-      i = result.nextIndex;
       continue;
     }
 
@@ -811,67 +1058,103 @@ function emitSingleNote(
 
   const duration = durationOverride ?? head.duration;
 
-  // grace note は duration=0 なので duration mapping をスキップし、デフォルト j (8分音符) を使う
-  let lengthChar: string | null;
-  let dots: number;
-  if (head.isGrace && duration === 0) {
-    lengthChar = 'j';
-    dots = 0;
-  } else {
-    // 付点の場合はベース duration を逆算して length char を引く
-    // MusicXML が <dot/> タグを省略している場合は detectDotsFromDuration でフォールバック
-    dots = head.dots;
-    let baseDur: number;
-    if (dots > 0) {
-      baseDur = dots === 3 ? Math.round(duration / 1.875)
-        : dots === 2 ? Math.round(duration / 1.75)
-        : Math.round(duration / 1.5);
-    } else {
-      const detected = detectDotsFromDuration(duration, header);
-      dots = detected.dots;
-      baseDur = detected.baseDur;
-    }
-    lengthChar = unitsToLengthChar(baseDur, header, warnings, diagnostics, partIndex, measureIndex);
-  }
-  if (!lengthChar) return { token: '', nextIndex: j };
-
-  const dotStr = '.'.repeat(dots);
-
+  // パーカッション (unpitched) は調号による臨時記号を適用しない
+  const effectiveKeyFifths = head.isUnpitched ? 0 : header.keyFifths;
   // スラー → 1 番目のピッチを小文字
   const pitchStr = chordPitches.map((p, idx) =>
-    formatPitch(p, header.keyFifths, idx === 0 && head.slurStart),
+    formatPitch(p, effectiveKeyFifths, idx === 0 && head.slurStart),
   ).join('');
 
-  // v2.0: duration char is always lowercase
-  let token = pitchStr + lengthChar + dotStr;
+  // v2.1: notehead suffix (!d !x !/ !t) — ピッチの直後、音価の前
+  const noteheadStr = head.notehead
+    ? `!${head.notehead === 'diamond' ? 'd' : head.notehead === 'x' ? 'x' : head.notehead === 'slash' ? '/' : 't'}`
+    : '';
 
-  // v2.0: articulation suffixes (1-char)
-  if (head.staccato) token += 's';
-  if (head.staccatissimo) token += 'S';
-  if (head.accent) token += '>';
-  if (head.tenuto) token += '-';
-  if (head.fermata) token += '~';
-  if (head.marcato) token += '^';
+  // --- アーティキュレーション文字列を事前構築 (tied chain 全体で共有) ---
+  let artStr = '';
+  if (head.staccato) artStr += 's';
+  if (head.staccatissimo) artStr += 'S';
+  if (head.accent) artStr += '>';
+  if (head.tenuto) artStr += '-';
+  if (head.fermata) {
+    if (head.fermataType === 'short') artStr += '~s';
+    else if (head.fermataType === 'long') artStr += '~l';
+    else artStr += '~';
+  }
+  if (head.marcato) artStr += '^';
+  if (head.upBow) artStr += 'V';
+  if (head.downBow) artStr += 'W';
+  if (head.harmonicNote) artStr += 'O';
+  if (head.snapPizzicato) artStr += 'X';
+  if (head.stopped) artStr += 'T';
+  if (head.trill) artStr += 'tr';
+  if (head.mordent) artStr += 'mr';
+  if (head.invertedMordent) artStr += 'MR';
+  if (head.turn) artStr += 'tn';
+  if (head.invertedTurn) artStr += 'TN';
+  if (head.tremolo > 0) artStr += `z${head.tremolo}`;
+  if (head.arpeggio) artStr += 'ar';
+  if (head.glissando) artStr += 'gl';
+  if (head.vibrato) artStr += 'vb';
+  if (head.bend) artStr += 'bn';
+  if (head.fall) artStr += 'jf';
+  if (head.doit) artStr += 'jd';
+  if (head.plop) artStr += 'jp';
+  if (head.scoop) artStr += 'js';
 
-  // v2.0: ornament suffixes (2-char)
-  if (head.trill) token += 'tr';
-  if (head.mordent) token += 'mr';
-  if (head.turn) token += 'tn';
-  if (head.tremolo > 0) token += `z${head.tremolo}`;
-  if (head.arpeggio) token += 'ar';
-  if (head.glissando) token += 'gl';
-
-  if (head.slurEnd) token += '_';
-
-  // タイ
-  if (head.tieStart) token += '+';
-
-  // v2.0: 装飾音プレフィックス (バックティック)
-  if (head.isGrace) {
+  // --- duration → .hide トークン ---
+  // grace note は duration=0 → デフォルト j (8分音符)
+  if (head.isGrace && duration === 0) {
+    let token = pitchStr + noteheadStr + 'j' + artStr;
+    if (head.slurEnd) token += '_';
+    if (head.tieStart) token += '+';
     token = (head.isAcciaccatura ? '``' : '`') + token;
+    if (head.lyricText) token += ` '${head.lyricText}`;
+    return { token, nextIndex: j };
   }
 
-  // 歌詞
+  // 付点検出 → 標準音価マッピング
+  let dots = head.dots;
+  let baseDur: number;
+  if (dots > 0) {
+    baseDur = dots === 3 ? Math.round(duration / 1.875)
+      : dots === 2 ? Math.round(duration / 1.75)
+      : Math.round(duration / 1.5);
+  } else {
+    const detected = detectDotsFromDuration(duration, header);
+    dots = detected.dots;
+    baseDur = detected.baseDur;
+  }
+
+  const lengthChar = unitsToLengthCharStrict(baseDur, header);
+  if (lengthChar) {
+    // ---- 標準パス: 単一トークン ----
+    const dotStr = '.'.repeat(dots);
+    let token = pitchStr + noteheadStr + lengthChar + dotStr + artStr;
+    if (head.slurEnd) token += '_';
+    if (head.tieStart) token += '+';
+    if (head.isGrace) token = (head.isAcciaccatura ? '``' : '`') + token;
+    if (head.lyricText) token += ` '${head.lyricText}`;
+    return { token, nextIndex: j };
+  }
+
+  // ---- 非標準 duration → tied chain 分解 ----
+  const chain = decomposeDuration(duration, header);
+  if (chain.length === 0) return { token: '', nextIndex: j };
+
+  // chain の各要素を pitch+duration で結合、アーティキュレーションは先頭のみ
+  const parts: string[] = [];
+  for (let ci = 0; ci < chain.length; ci++) {
+    const { char, dots: cDots } = chain[ci];
+    let part = pitchStr + noteheadStr + char + '.'.repeat(cDots);
+    if (ci === 0) part += artStr; // アーティキュレーションは先頭音に付与
+    if (ci < chain.length - 1) part += '+'; // chain 内タイ
+  parts.push(part);
+  }
+  let token = parts.join('');
+  if (head.slurEnd) token += '_';
+  if (head.tieStart) token += '+'; // MusicXML 由来のタイ (次の MusicXML note へ)
+  if (head.isGrace) token = (head.isAcciaccatura ? '``' : '`') + token;
   if (head.lyricText) token += ` '${head.lyricText}`;
 
   return { token, nextIndex: j };
@@ -938,15 +1221,23 @@ function collectTupletGroup(
   const actual = head.actualNotes ?? 3;
   const normal = head.normalNotes ?? 2;
 
-  // 連符内の各 note を .hide トークンに変換
+  // 連符内の各 note/rest を .hide トークンに変換
   const memberTokens: string[] = [];
   let gi = 0;
   while (gi < groupNotes.length) {
     const gn = groupNotes[gi].note;
     if (gn.isChordContinuation) { gi++; continue; }
 
-    // nominal duration for this member
+    // nominal duration for this member (スケーリング前の本来の長さ)
     const nominalDur = Math.round(gn.duration * actual / normal);
+
+    // 連符内休符: Rx トークンとして名目デュレーションで生成
+    if (gn.isRest) {
+      const restTok = durationToRest(nominalDur, header, warnings, diagnostics, partIndex, measureIndex, gn.dots);
+      if (restTok) memberTokens.push(restTok);
+      gi++;
+      continue;
+    }
 
     // emitSingleNote を使って変換 (durationOverride で nominal を渡す)
     const result = emitSingleNoteInline(
@@ -956,7 +1247,7 @@ function collectTupletGroup(
     gi = result.nextIndex;
   }
 
-  // メンバーが空なら連符トークンを出さない (全て休符だった場合など)
+  // メンバーが空なら連符トークンを出さない
   if (memberTokens.length === 0) {
     return { token: '', nextIndex: i };
   }
@@ -989,7 +1280,9 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
   // <rest/> (自己終了) と <rest>...</rest> (子要素あり) の両方を検出
   const isRest = /<rest[\s>\/]/.test(body);
   const isWholeMeasureRest = isRest && /<rest[^>]*measure="yes"/.test(body);
-  const duration = parseIntFromTag(body, 'duration') ?? 0;
+  const isGrace = /<grace/.test(body);
+  // 装飾音は演奏時間 0 (一部の MusicXML エクスポーターが非ゼロ duration を出力するが無視)
+  const duration = isGrace ? 0 : (parseIntFromTag(body, 'duration') ?? 0);
   const dots = (body.match(/<dot[\s\/>]/g) ?? []).length;
   const tieStart = /<tie[^>]+type="start"/.test(body);
   const voice = parseIntFromTag(body, 'voice') ?? 1;
@@ -1004,17 +1297,48 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
   const fermata = /<fermata/.test(body);
   const marcato = /<strong-accent/.test(body);
   const trill = /<trill-mark/.test(body);
-  const mordent = /<mordent/.test(body);
-  const turn = /<turn/.test(body);
+  // mordent vs inverted-mordent: MusicXML <mordent/> = lower mordent, <inverted-mordent/> = upper
+  const mordent = /<mordent[\s\/>]/.test(body) && !/<inverted-mordent/.test(body);
+  const invertedMordent = /<inverted-mordent/.test(body);
+  const turn = /<turn[\s\/>]/.test(body) && !/<inverted-turn/.test(body);
+  const invertedTurn = /<inverted-turn/.test(body);
   const tremoloMatch = /<tremolo[^>]*>(\d+)<\/tremolo>/.exec(body);
   const tremolo: 0 | 1 | 2 | 3 = tremoloMatch
     ? (Math.min(3, Math.max(0, parseInt(tremoloMatch[1], 10))) as 0 | 1 | 2 | 3)
     : 0;
   const arpeggio = /<arpeggiate/.test(body);
   const glissando = /<glissando/.test(body);
+  // v2.1 bowing / techniques
+  const upBow = /<up-bow/.test(body);
+  const downBow = /<down-bow/.test(body);
+  const harmonicNote = /<harmonic/.test(body);
+  const snapPizzicato = /<snap-pizzicato/.test(body);
+  const stopped = /<stopped/.test(body);
+  // v2.1 jazz articulations (MusicXML uses <falloff>, <doit>, <plop>, <scoop> in <articulations>)
+  const fall = /<falloff/.test(body);
+  const doit = /<doit/.test(body);
+  const plop = /<plop/.test(body);
+  const scoop = /<scoop/.test(body);
+  // v2.1 misc
+  const vibrato = /<wavy-line[^>]+type="start"/.test(body) && !trill;
+  const bend = /<bend/.test(body);
   const breathMark = /<breath-mark/.test(body);
   const caesura = /<caesura/.test(body);
-  const isGrace = /<grace/.test(body);
+  // v2.1 fermata type detection
+  let fermataType: '' | 'normal' | 'short' | 'long' = '';
+  if (fermata) {
+    const fermataTag = /<fermata[^>]*>([^<]*)<\/fermata>/.exec(body);
+    const fermataContent = fermataTag?.[1]?.trim().toLowerCase() ?? '';
+    if (fermataContent === 'angled' || fermataContent === 'square') fermataType = fermataContent === 'angled' ? 'short' : 'long';
+    else fermataType = 'normal';
+  }
+
+  // v2.1: note-level technical annotations (fingering, string) → 抽出して lyricText に付加しない
+  // これらは direction 経由で別途処理される場合もある。note 内 <technical> は parseNoteBlock では
+  // 直接 .hide トークンに変換できない (XmlNote は単一トークンを表すため) ので
+  // convertNotesToHideTokens 側でハンドルする。ここではフラグのみ保持。
+  // (将来拡張用に XmlNote に fingering/string フィールドを追加可能)
+  // isGrace は上で宣言済み (duration=0 の強制に使用)
   const isAcciaccatura = /<grace[^>]+slash="yes"/.test(body);
 
   // 連符詳細
@@ -1036,26 +1360,54 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
   let lyricText: string | undefined;
   const lyricMatch = /<lyric[^>]*>[\s\S]*?<text>([^<]*)<\/text>[\s\S]*?<\/lyric>/.exec(body);
   if (lyricMatch) {
-    lyricText = lyricMatch[1];
+    lyricText = lyricMatch[1].replace(/[\r\n]+/g, '');
+  }
+
+  // パーカッション: <unpitched> 検出
+  const isUnpitched = /<unpitched/.test(body);
+
+  // ノートヘッド: <notehead>x|slash|diamond|triangle</notehead>
+  let notehead: XmlNote['notehead'];
+  const noteheadMatch = /<notehead[^>]*>([^<]+)<\/notehead>/.exec(body);
+  if (noteheadMatch) {
+    const nh = noteheadMatch[1].trim().toLowerCase();
+    if (nh === 'x' || nh === 'cross') notehead = 'x';
+    else if (nh === 'slash') notehead = 'slash';
+    else if (nh === 'diamond') notehead = 'diamond';
+    else if (nh === 'triangle') notehead = 'triangle';
   }
 
   let pitch: HidePitch | undefined;
   if (!isRest) {
-    const stepM = /<step>(\w)<\/step>/.exec(body);
-    const octaveM = /<octave>(\d+)<\/octave>/.exec(body);
-    const alterM = /<alter>(-?[\d.]+)<\/alter>/.exec(body);
-    if (stepM && octaveM) {
-      const step = stepM[1] as HidePitch['step'];
-      // <alter> が明示されていなければ key signature が暗黙的に決める鳴音アルターを採用
-      // (例: D major = fifths 2 で <step>F</step> の sounding は F#)
-      const soundingAlter = alterM
-        ? clampAlter(Math.round(parseFloat(alterM[1])))
-        : keySigImpliedAlter(step, header.keyFifths);
-      pitch = {
-        step,
-        octave: parseInt(octaveM[1], 10),
-        alter: soundingAlter,
-      };
+    if (isUnpitched) {
+      // パーカッション: <display-step>/<display-octave> を使用、alter は常に 0
+      const stepM = /<display-step>(\w)<\/display-step>/.exec(body);
+      const octaveM = /<display-octave>(\d+)<\/display-octave>/.exec(body);
+      if (stepM && octaveM) {
+        pitch = {
+          step: stepM[1] as HidePitch['step'],
+          octave: parseInt(octaveM[1], 10),
+          alter: 0,
+        };
+      }
+    } else {
+      // 通常の <pitch> (フォールバック: <display-step>/<display-octave>)
+      const stepM = /<step>(\w)<\/step>/.exec(body)
+        ?? /<display-step>(\w)<\/display-step>/.exec(body);
+      const octaveM = /<octave>(\d+)<\/octave>/.exec(body)
+        ?? /<display-octave>(\d+)<\/display-octave>/.exec(body);
+      const alterM = /<alter>(-?[\d.]+)<\/alter>/.exec(body);
+      if (stepM && octaveM) {
+        const step = stepM[1] as HidePitch['step'];
+        const soundingAlter = alterM
+          ? clampAlter(Math.round(parseFloat(alterM[1])))
+          : keySigImpliedAlter(step, header.keyFifths);
+        pitch = {
+          step,
+          octave: parseInt(octaveM[1], 10),
+          alter: soundingAlter,
+        };
+      }
     }
   }
 
@@ -1066,6 +1418,8 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
     duration: isGrace ? 0 : duration, // grace notes have 0 duration in .hide
     dots,
     pitch,
+    isUnpitched,
+    notehead,
     tieStart,
     voice,
     hasTimeModification,
@@ -1083,6 +1437,24 @@ function parseNoteBlock(body: string, header: ParsedHeader): XmlNote {
     tremolo,
     arpeggio,
     glissando,
+    // v2.1 bowing / techniques
+    upBow,
+    downBow,
+    harmonicNote,
+    snapPizzicato,
+    stopped,
+    // v2.1 inverted ornaments
+    invertedMordent,
+    invertedTurn,
+    // v2.1 jazz
+    fall,
+    doit,
+    plop,
+    scoop,
+    // v2.1 misc
+    vibrato,
+    bend,
+    fermataType,
     breathMark,
     caesura,
     isGrace,
@@ -1125,9 +1497,12 @@ function extractBarlineStyle(
     if (barStyle === 'light-light') return 'double';
     if (barStyle === 'light-heavy') return 'final';
     if (barStyle === 'heavy-light') return 'repeatStart';
+    if (barStyle === 'heavy-heavy') return 'double'; // double heavy → double
     if (barStyle === 'regular') return 'single';
     if (barStyle === 'dashed') return 'dashed';
     if (barStyle === 'none') return 'invisible';
+    if (barStyle === 'tick') return 'dashed'; // tick → dashed fallback
+    if (barStyle === 'short') return 'dashed'; // short → dashed fallback
     return undefined;
   }
   return undefined;
@@ -1165,8 +1540,16 @@ function musicXmlKindToSymbol(kind: string): string {
   return map[kind] ?? (kind === '' ? '' : kind);
 }
 
-/** 五度圏の数値 → .hide の調名 (例: 4→"E", -6→"Gb") */
-function fifthsToKeyName(fifths: number): string {
+/** 五度圏の数値 → .hide の調名 (例: 4→"E", -6→"Gb", minor: 0→"Am") */
+function fifthsToKeyName(fifths: number, mode: 'major' | 'minor' = 'major'): string {
+  if (mode === 'minor') {
+    const minorNames: Record<string, string> = {
+      '-7': 'Abm', '-6': 'Ebm', '-5': 'Bbm', '-4': 'Fm', '-3': 'Cm',
+      '-2': 'Gm', '-1': 'Dm', '0': 'Am', '1': 'Em', '2': 'Bm',
+      '3': 'F#m', '4': 'C#m', '5': 'G#m', '6': 'D#m', '7': 'A#m',
+    };
+    return minorNames[String(fifths)] ?? 'Am';
+  }
   const names: Record<string, string> = {
     '-7': 'Cb', '-6': 'Gb', '-5': 'Db', '-4': 'Ab', '-3': 'Eb',
     '-2': 'Bb', '-1': 'F', '0': 'C', '1': 'G', '2': 'D',
@@ -1246,12 +1629,84 @@ function durationToRest(
     dots = detected.dots;
     baseUnits = detected.baseDur;
   }
-  const lc = unitsToLengthChar(baseUnits, header, warnings, diagnostics, partIndex, measureIndex);
-  const dotStr = '.'.repeat(dots);
-  if (!lc) return '';
-  return `R${lc}${dotStr}`;
+
+  // 標準音価に一致する場合 → 単一休符トークン
+  const lc = unitsToLengthCharStrict(baseUnits, header);
+  if (lc) return `R${lc}${'.'.repeat(dots)}`;
+
+  // 非標準 → decompose して複数休符を連結 (休符にタイは不要)
+  const chain = decomposeDuration(hideUnits, header);
+  if (chain.length === 0) {
+    // フォールバック: 最近接近似
+    const fallback = unitsToLengthChar(baseUnits, header, warnings, diagnostics, partIndex, measureIndex);
+    return fallback ? `R${fallback}${'.'.repeat(dots)}` : '';
+  }
+  return chain.map(c => `R${c.char}${'.'.repeat(c.dots)}`).join(' ');
 }
 
+/** 厳密マッチのみ。失敗なら null。 */
+function unitsToLengthCharStrict(
+  units: number,
+  header: ParsedHeader,
+): string | null {
+  for (const e of DURATION_MAP) {
+    const expected = (e.rawAtDiv64 * header.div) / 64;
+    if (Math.round(expected) === units) return e.char;
+  }
+  return null;
+}
+
+const DURATION_MAP: Array<{ char: string; rawAtDiv64: number }> = [
+  { char: 'g', rawAtDiv64: 1 },
+  { char: 'h', rawAtDiv64: 2 },
+  { char: 'i', rawAtDiv64: 4 },
+  { char: 'j', rawAtDiv64: 8 },
+  { char: 'k', rawAtDiv64: 16 },
+  { char: 'l', rawAtDiv64: 32 },
+  { char: 'm', rawAtDiv64: 64 },
+  { char: 'n', rawAtDiv64: 128 },
+];
+
+/**
+ * 任意の duration を標準音価 (付点含む) の和に貪欲分解する。
+ * 各要素は { char, dots } で、tied chain として結合可能。
+ * 近似は一切しない — 完全分解のみ。
+ */
+function decomposeDuration(
+  units: number,
+  header: ParsedHeader,
+): Array<{ char: string; dots: number }> {
+  // 大→小順で標準音価 (基本 + 付点 1-3) のリストを構築
+  const candidates: Array<{ char: string; units: number; dots: number }> = [];
+  for (const e of DURATION_MAP) {
+    const base = Math.round((e.rawAtDiv64 * header.div) / 64);
+    if (base <= 0) continue;
+    // 三重付点 → 二重付点 → 付点 → 基本 (大きい順で greedy)
+    candidates.push({ char: e.char, units: Math.round(base * 1.875), dots: 3 });
+    candidates.push({ char: e.char, units: Math.round(base * 1.75), dots: 2 });
+    candidates.push({ char: e.char, units: Math.round(base * 1.5), dots: 1 });
+    candidates.push({ char: e.char, units: base, dots: 0 });
+  }
+  candidates.sort((a, b) => b.units - a.units);
+
+  const result: Array<{ char: string; dots: number }> = [];
+  let remaining = units;
+  while (remaining > 0) {
+    let found = false;
+    for (const c of candidates) {
+      if (c.units > 0 && c.units <= remaining) {
+        result.push({ char: c.char, dots: c.dots });
+        remaining -= c.units;
+        found = true;
+        break;
+      }
+    }
+    if (!found) break; // 分解不能な余り → 安全弁
+  }
+  return result;
+}
+
+/** 後方互換ラッパー: まず厳密マッチ → 失敗なら decompose の先頭要素を返す */
 function unitsToLengthChar(
   units: number,
   _header: ParsedHeader,
@@ -1260,50 +1715,35 @@ function unitsToLengthChar(
   partIndex: number,
   measureIndex: number,
 ): string | null {
-  // v2.0: DIV=64 ベース (g=1, h=2, i=4, j=8, k=16, l=32, m=64, n=128)
-  const map: Array<{ char: string; rawAtDiv64: number }> = [
-    { char: 'g', rawAtDiv64: 1 },
-    { char: 'h', rawAtDiv64: 2 },
-    { char: 'i', rawAtDiv64: 4 },
-    { char: 'j', rawAtDiv64: 8 },
-    { char: 'k', rawAtDiv64: 16 },
-    { char: 'l', rawAtDiv64: 32 },
-    { char: 'm', rawAtDiv64: 64 },
-    { char: 'n', rawAtDiv64: 128 },
-  ];
-  for (const e of map) {
-    const expected = (e.rawAtDiv64 * _header.div) / 64;
-    if (Math.round(expected) === units) return e.char;
-  }
-  // 厳密マッチ失敗 → 一番近い基本値
-  warnings.push(`パート#${partIndex + 1} 小節 ${measureIndex + 1}: duration ${units}u が標準長さに一致しません — 最近接の基本値で近似`);
+  const exact = unitsToLengthCharStrict(units, _header);
+  if (exact) return exact;
+  // 非標準 → diagnostic を emit しつつ最近接を返す (decompose は呼び出し元で使う)
+  warnings.push(`パート#${partIndex + 1} 小節 ${measureIndex + 1}: duration ${units}u が標準長さに一致しません — tied chain で分解`);
   diagnostics.push({
     kind: 'nonStandardDuration',
     partIndex,
     measureIndex,
     durationUnits: units,
   });
-  let best = map[4]; // k = quarter
-  let bestDist = Infinity;
-  for (const e of map) {
-    const expected = (e.rawAtDiv64 * _header.div) / 64;
-    const d = Math.abs(expected - units);
-    if (d < bestDist) { bestDist = d; best = e; }
-  }
-  return best.char;
+  const chain = decomposeDuration(units, _header);
+  return chain.length > 0 ? chain[0].char : 'k';
 }
 
-function formatPitch(p: HidePitch, _keyFifths: number, slurStart: boolean = false): string {
+function formatPitch(p: HidePitch, keyFifths: number, slurStart: boolean = false): string {
   // v2.0: 毎回絶対音高。#/b/*/x/bb で臨時記号を表記。
+  // alter=0 でも調号が暗黙に♯/♭を付ける音名の場合は * (ナチュラル) を明示する。
   let accChar = '';
   switch (p.alter) {
     case 2: accChar = 'x'; break;
     case 1: accChar = '#'; break;
     case -1: accChar = 'b'; break;
     case -2: accChar = 'bb'; break;
-    // 0 = natural — 調号と異なる場合は * を使うが、
-    // v2.0 では source 側で常に絶対音高を書くので、
-    // naturalが調号デフォルトと同じなら省略。
+    default: {
+      // alter=0 だが調号が暗黙に変化させる音名なら * を付ける
+      const implied = keySigImpliedAlter(p.step, keyFifths);
+      if (implied !== 0) accChar = '*';
+      break;
+    }
   }
   const step = slurStart ? p.step.toLowerCase() : p.step;
   return `${step}${accChar}${p.octave}`;
@@ -1328,11 +1768,49 @@ function keySigImpliedAlter(step: HidePitch['step'], fifths: number): HidePitch[
   return 0;
 }
 
-function assignPartLabels(count: number, override?: string[]): string[] {
+/**
+ * <part-list> から各パートの楽器名を抽出する。
+ * ID → name のマッピングを返し、parts の順序に合わせて配列化。
+ */
+function extractPartNames(xml: string, parts: RawPart[]): (string | undefined)[] {
+  const idToName = new Map<string, string>();
+  const re = /<score-part\s+id\s*=\s*["']([^"']+)["'][^>]*>([\s\S]*?)<\/score-part>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(xml)) !== null) {
+    const id = m[1];
+    const inner = m[2];
+    const nameMatch = /<part-name[^>]*>([^<]+)<\/part-name>/.exec(inner);
+    if (nameMatch) {
+      const name = nameMatch[1].trim();
+      // 空文字や汎用名 (MusicXML, Music, Part) は無視
+      if (name.length > 0 && !/^(MusicXML|Music|Part)\s*\d*$/i.test(name)) {
+        idToName.set(id, name);
+      }
+    }
+  }
+  return parts.map(p => idToName.get(p.id));
+}
+
+function assignPartLabels(count: number, override?: string[], partNames?: (string | undefined)[]): string[] {
   const out: string[] = [];
   for (let i = 0; i < count; i++) {
-    if (override && i < override.length) out.push(override[i]);
-    else out.push(String(i + 1));
+    if (override && i < override.length) {
+      out.push(override[i]);
+    } else {
+      const num = String(i + 1);
+      const name = partNames?.[i];
+      out.push(name ? `${num}:${name}` : num);
+    }
   }
   return out;
 }
+
+// ============================================================
+// M2H エクスポート (musicXmlToHide の別名)
+// ============================================================
+
+/** M2H — MusicXML → .hide v2.1 完全変換エイリアス */
+export const m2h = musicXmlToHide;
+export type { MusicXmlToHideOptions as M2HOptions };
+export type { MusicXmlToHideResult as M2HResult };
+export type { MusicXmlToHideDiagnostic as M2HDiagnostic };

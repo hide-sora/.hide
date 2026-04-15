@@ -124,7 +124,8 @@ describe('Bach corpus — forward conversion round-trip', () => {
     // (2) hideSource が non-empty + 構造健全性
     expect(result.hideSource.length).toBeGreaterThan(0);
     expect(result.hideSource).toMatch(/^\[/);
-    expect(result.hideSource).toMatch(/\[1\]/);
+    // M2H はパート名を含む ([1:Soprano] 等) ので [1 だけを確認
+    expect(result.hideSource).toMatch(/\[1[^\]]*\]/);
     expect(result.partsCount).toBeGreaterThanOrEqual(1);
     expect(result.measuresCount).toBeGreaterThanOrEqual(1);
 
